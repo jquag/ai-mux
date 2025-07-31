@@ -1,0 +1,57 @@
+{
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "go run . --notification"
+          }
+        ]
+      }
+    ],
+		"Stop": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "go run . --notification"
+					}
+				]
+			}
+		],
+		"UserPromptSubmit": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "go run . --notification"
+					}
+				]
+			}
+		],
+		"PreToolUse": [
+			{
+				"matcher": "*",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "go run . --notification"
+					}
+				]
+			}
+		],
+		"PostToolUse": [
+			{
+				"matcher": "*",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "go run . --notification"
+					}
+				]
+			}
+		]
+  }
+}
