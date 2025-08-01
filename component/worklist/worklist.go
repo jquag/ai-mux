@@ -106,14 +106,29 @@ func (m *Model) itemView(item *workitem.WorkItem) string {
 		descriptionColor = theme.Colors.Muted
 	}
 
-	name := lipgloss.NewStyle().Foreground(nameColor).Render(item.BranchName)
+	centerWidth := m.width - lipgloss.Width(left) - 1
+	name := lipgloss.NewStyle().Width(centerWidth).MaxWidth(centerWidth).MaxHeight(1).Foreground(nameColor).Render(item.BranchName)
 	descr := lipgloss.NewStyle().
-		Height(2).MaxHeight(2).Width(m.width - lipgloss.Width(left)).
+		Height(2).MaxHeight(2).Width(centerWidth).
 		Foreground(descriptionColor).
 		Render(item.Description)
 	status := lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render("[Not Started]")
+
+	right := ""
+	// Check if name was truncated
+	if lipgloss.Width(item.BranchName) > centerWidth {
+		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render("…")
+	} else {
+		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render(" ")
+	}
+	// Check if description exceeds 2 lines when wrapped
+	descrHeight := lipgloss.Height(lipgloss.NewStyle().Width(centerWidth).Render(item.Description))
+	if descrHeight > 2 {
+		right += lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render("\n\n…")
+	}
+
 	info := lipgloss.JoinVertical(lipgloss.Left, name, descr, status)
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, info) + "\n"
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, info, right) + "\n"
 }
 
 func (m *Model) SetWidth(width int) {
