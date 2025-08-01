@@ -5,6 +5,7 @@ type WorkItem struct {
 	BranchName  string
 	Description string
 	PlanMode    bool
+	Status      string
 }
 
 type NewWorkItemMsg struct {

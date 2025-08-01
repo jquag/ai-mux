@@ -1,7 +1,12 @@
 package worklist
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,6 +15,7 @@ import (
 	"github.com/jquag/ai-mux/component/workform"
 	workitem "github.com/jquag/ai-mux/data"
 	"github.com/jquag/ai-mux/theme"
+	"github.com/jquag/ai-mux/util"
 )
 
 type Model struct {
@@ -18,6 +24,12 @@ type Model struct {
 	viewport  viewport.Model
 	workItems []*workitem.WorkItem
 	Overlayed bool
+	loading   bool
+}
+
+func (m *Model) Init() tea.Cmd {
+	m.loading = true
+	return loadWorkItems
 }
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
@@ -31,6 +43,14 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		}
 	case workitem.NewWorkItemMsg:
 		m.workItems = append(m.workItems, msg.WorkItem)
+	case loadItemsMsg:
+		m.loading = false
+		m.workItems = msg.items
+		//TODO: handle error
+		return m, m.startStatusPollers()
+	case statusUpdateMsg:
+		m.updateStatus(msg.item, msg.status)
+		return m, calcStatus(msg.item, 3)
 	}
 
 	return m, nil
@@ -52,7 +72,9 @@ func (m *Model) View() string {
 		Render("Work Items")
 	body := ""
 
-	if len(m.workItems) == 0 {
+	if m.loading {
+		body = "loading..."
+	} else if len(m.workItems) == 0 {
 		body = m.emptyBody()
 	} else {
 		body = m.listBody()
@@ -112,7 +134,7 @@ func (m *Model) itemView(item *workitem.WorkItem) string {
 		Height(2).MaxHeight(2).Width(centerWidth).
 		Foreground(descriptionColor).
 		Render(item.Description)
-	status := lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render("[Not Started]")
+	status := lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render(fmt.Sprintf("[%s]", item.Status))
 
 	right := ""
 	// Check if name was truncated
@@ -141,10 +163,95 @@ func (m *Model) SetHeight(height int) {
 	m.height = height
 }
 
+func (m *Model) startStatusPollers() tea.Cmd {
+	cmds := make([]tea.Cmd, len(m.workItems))
+	for i, item := range m.workItems {
+		cmds[i] = calcStatus(item, 0)
+	}
+	return tea.Batch(cmds...)
+}
+
+func (m *Model) updateStatus(item *workitem.WorkItem, status string) {
+	for _, existingItem := range m.workItems {
+		if existingItem == item {
+			existingItem.Status = status
+			break
+		}
+	}
+}
+
 func New(width, height int) *Model {
 	return &Model{
 		width:    width,
 		height:   height,
 		viewport: viewport.New(width, height),
 	}
+}
+
+type statusUpdateMsg struct {
+	item   *workitem.WorkItem
+	status string
+}
+
+func calcStatus(item *workitem.WorkItem, wait int) tea.Cmd {
+	return func() tea.Msg {
+		time.Sleep(time.Duration(wait) * time.Second)
+		//TODO: Implement actual status update logic
+		if item.Status == "" {
+			item.Status = "Not Started 0"
+		}
+		count, err := strconv.Atoi(item.Status[len(item.Status)-1:])
+		if err != nil {
+			count = 0
+		}
+		return statusUpdateMsg{
+			item:   item,
+			status: fmt.Sprintf("Not Started %d", count+1),
+		}
+	}
+}
+
+func loadWorkItems() tea.Msg {
+	var items []*workitem.WorkItem
+
+	// Check if .ai-mux directory exists
+	if _, err := os.Stat(util.AiMuxDir); os.IsNotExist(err) {
+		// No directory means no items to load
+		return loadItemsMsg{err: err, items: items}
+	}
+
+	// Read all subdirectories in .ai-mux
+	entries, err := os.ReadDir(util.AiMuxDir)
+	if err != nil {
+		return loadItemsMsg{err: fmt.Errorf("failed to read .ai-mux directory: %w", err), items: items}
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// Read item.json from each subdirectory
+		itemPath := filepath.Join(util.AiMuxDir, entry.Name(), "item.json")
+		data, err := os.ReadFile(itemPath)
+		if err != nil {
+			// Skip items that can't be read
+			continue
+		}
+
+		var item workitem.WorkItem
+		if err := json.Unmarshal(data, &item); err != nil {
+			// Skip items that can't be parsed
+			continue
+		}
+
+		items = append(items, &item)
+	}
+
+	return loadItemsMsg{err: nil, items: items}
+}
+
+type loadItemsMsg struct {
+	err   error
+	items []*workitem.WorkItem
 }
