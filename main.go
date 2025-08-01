@@ -10,6 +10,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jquag/ai-mux/component/app"
+	"github.com/jquag/ai-mux/util"
 )
 
 //go:embed claudeSettings.json
@@ -54,14 +55,13 @@ func main() {
 	}
 
 	// Check and create .ai-mux directory and claude-settings.json if needed
-	aiMuxDir := ".ai-mux"
-	if _, err := os.Stat(aiMuxDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(aiMuxDir, 0755); err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating .ai-mux directory: %v\n", err)
-			os.Exit(1)
-		}
-		
-		settingsPath := filepath.Join(aiMuxDir, "claude-settings.json")
+	if err := util.EnsureAiMuxDir(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	
+	settingsPath := filepath.Join(util.AiMuxDir, "claude-settings.json")
+	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
 		if err := os.WriteFile(settingsPath, []byte(claudeSettings), 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing claude-settings.json: %v\n", err)
 			os.Exit(1)

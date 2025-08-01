@@ -1,11 +1,17 @@
 package workform
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/google/uuid"
 	"github.com/jquag/ai-mux/component/modal"
 	workitem "github.com/jquag/ai-mux/data"
+	"github.com/jquag/ai-mux/util"
 )
 
 type Model struct {
@@ -85,13 +91,17 @@ func New() Model {
 }
 
 func (m Model) submitCmd() tea.Cmd {
-	// TODO: save the work item to file
-
 	workItem := &workitem.WorkItem{
 		Id:          uuid.New().String(),
 		BranchName:  m.form.GetString("branchName"),
 		Description: m.form.GetString("description"),
 		PlanMode:    m.form.GetBool("startWithPlan"),
+	}
+
+	// Save the work item to file
+	if err := saveWorkItem(workItem); err != nil {
+		fmt.Fprintf(os.Stderr, "Error saving work item: %v\n", err)
+		os.Exit(1)
 	}
 
 	newWorkItemCmd := func() tea.Msg {
@@ -100,4 +110,35 @@ func (m Model) submitCmd() tea.Cmd {
 		}
 	}
 	return tea.Batch(modal.CloseCmd, newWorkItemCmd)
+}
+
+func saveWorkItem(item *workitem.WorkItem) error {
+	// Ensure .ai-mux directory exists
+	if err := util.EnsureAiMuxDir(); err != nil {
+		return err
+	}
+
+	// Create directory for this item using its UUID
+	itemDir := filepath.Join(util.AiMuxDir, item.Id)
+	if err := os.MkdirAll(itemDir, 0755); err != nil {
+		return fmt.Errorf("failed to create item directory: %w", err)
+	}
+
+	// Save item as JSON
+	itemPath := filepath.Join(itemDir, "item.json")
+	itemData, err := json.MarshalIndent(item, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal item: %w", err)
+	}
+	if err := os.WriteFile(itemPath, itemData, 0644); err != nil {
+		return fmt.Errorf("failed to write item.json: %w", err)
+	}
+
+	// Create state log with simple "created" entry
+	stateLogPath := filepath.Join(itemDir, "state-log.txt")
+	if err := os.WriteFile(stateLogPath, []byte("created\n"), 0644); err != nil {
+		return fmt.Errorf("failed to write state-log.txt: %w", err)
+	}
+
+	return nil
 }

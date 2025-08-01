@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -34,4 +35,15 @@ func TitledBorderStyle(color lipgloss.Color, title string, width int) lipgloss.S
 		MiddleBottom: "┴",
 	}
 	return style.BorderStyle(borderWithTitle).BorderForeground(color)
+}
+
+const AiMuxDir = ".ai-mux"
+
+func EnsureAiMuxDir() error {
+	if _, err := os.Stat(AiMuxDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(AiMuxDir, 0755); err != nil {
+			return fmt.Errorf("failed to create .ai-mux directory: %w", err)
+		}
+	}
+	return nil
 }
