@@ -17,6 +17,7 @@ type Model struct {
 	height    int
 	viewport  viewport.Model
 	workItems []*workitem.WorkItem
+	Overlayed bool
 }
 
 func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
@@ -36,7 +37,19 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 }
 
 func (m *Model) View() string {
-	title := lipgloss.NewStyle().Foreground(theme.Colors.Title).Render("Work Items")
+	titleColor := theme.Colors.Title
+	borderColor := theme.Colors.Border
+
+	if m.Overlayed {
+		titleColor = theme.Colors.Muted
+		borderColor = theme.Colors.Muted
+	}
+
+	title := lipgloss.NewStyle().
+		Foreground(titleColor).
+		Border(lipgloss.NormalBorder(), false, false, true).BorderForeground(borderColor).
+		Width(m.width).
+		Render("Work Items")
 	body := ""
 
 	if len(m.workItems) == 0 {
@@ -59,21 +72,48 @@ func (m *Model) emptyBody() string {
 		Foreground(theme.Colors.Muted).
 		Italic(true).Render("--None--")
 
-	body += "\n\n[Press " +
-		lipgloss.NewStyle().Foreground(theme.Colors.Primary).Render("a") +
-		" to add a work item.]"
+	if !m.Overlayed {
+		body += "\n\n[Press " +
+			lipgloss.NewStyle().Foreground(theme.Colors.Primary).Render("a") +
+			" to add a work item.]"
+	}
 
 	return body
 }
 
 func (m *Model) listBody() string {
-	body := ""
-	for _, item := range m.workItems {
-		body += lipgloss.NewStyle().
-			Render(fmt.Sprintf("- %s: %s", item.BranchName, item.Description)) + "\n"
+	items := make([]string, len(m.workItems))
+	for i, item := range m.workItems {
+		items[i] = m.itemView(item)
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, items...)
+}
+
+func (m *Model) itemView(item *workitem.WorkItem) string {
+	lineStyle := lipgloss.NewStyle().Foreground(theme.Colors.Muted)
+	left := lipgloss.JoinVertical(lipgloss.Left,
+		lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render("● "),
+		lineStyle.Render("│"),
+		lineStyle.Render("│"),
+		lineStyle.Render("╰"),
+	)
+
+	nameColor := theme.Colors.Primary
+	descriptionColor := theme.Colors.Text
+
+	if m.Overlayed {
+		nameColor = theme.Colors.Muted
+		descriptionColor = theme.Colors.Muted
 	}
 
-	return body
+	name := lipgloss.NewStyle().Foreground(nameColor).Render(item.BranchName)
+	descr := lipgloss.NewStyle().
+		Height(2).MaxHeight(2).Width(m.width - lipgloss.Width(left)).
+		Foreground(descriptionColor).
+		Render(item.Description)
+	status := lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render("[Not Started]")
+	info := lipgloss.JoinVertical(lipgloss.Left, name, descr, status)
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, info) + "\n"
 }
 
 func (m *Model) SetWidth(width int) {

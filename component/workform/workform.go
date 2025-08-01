@@ -46,7 +46,7 @@ func (m Model) View() string {
 }
 
 func (m Model) WithWidth(width int) modal.ModalContent {
-	m.width = min(width, 90)
+	m.width = width
 	m.form = m.form.WithWidth(m.width)
 	return m
 }

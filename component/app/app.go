@@ -38,18 +38,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
+		m.width = min(msg.Width, 100)
 		m.height = msg.Height
-		m.updateLayout(msg.Width, msg.Height)
+		m.updateLayout()
 		return m, nil
 
 	case modal.ShowModalMsg:
 		m.currentModal = modal.New(m.width, m.height, msg.Content, msg.Title, theme.Colors.Border)
 		m.currentModal.Show = true
+		m.workListModel.Overlayed = true
 		return m, nil
 
 	case modal.CloseMsg:
 		m.currentModal.Show = false
+		m.workListModel.Overlayed = false
 		return m, nil
 	}
 
@@ -81,15 +83,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	borderColor := theme.Colors.Border
-	if m.currentModal.Show {
-		borderColor = theme.Colors.Muted
-	}
-
 	v := lipgloss.NewStyle().
 		Padding(0, 1).
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
 		Render(m.workListModel.View())
 	if m.currentModal.Show {
 		m.currentModal.BackgroundView = v
@@ -99,10 +94,10 @@ func (m Model) View() string {
 	}
 }
 
-func (m *Model) updateLayout(width, height int) {
-	m.workListModel.SetHeight(height - 4)
-	m.workListModel.SetWidth(width - 4)
+func (m *Model) updateLayout() {
+	m.workListModel.SetHeight(m.height - 2)
+	m.workListModel.SetWidth(m.width - 2)
 
-	m.currentModal = m.currentModal.WithWidth(width)
-	m.currentModal = m.currentModal.WithHeight(height)
+	m.currentModal = m.currentModal.WithWidth(m.width)
+	m.currentModal = m.currentModal.WithHeight(m.height)
 }
