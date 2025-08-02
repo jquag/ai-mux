@@ -19,12 +19,13 @@ import (
 )
 
 type Model struct {
-	width     int
-	height    int
-	viewport  viewport.Model
-	workItems []*workitem.WorkItem
-	Overlayed bool
-	loading   bool
+	width         int
+	height        int
+	viewport      viewport.Model
+	workItems     []*workitem.WorkItem
+	Overlayed     bool
+	loading       bool
+	selectedIndex int
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -40,6 +41,14 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			form := workform.New()
 			initCmd := form.Init()
 			return m, tea.Batch(initCmd, modal.ShowModal(form, "Add Work Item"))
+		case "j", "down":
+			if len(m.workItems) > m.selectedIndex+1 {
+				m.selectedIndex++
+			}
+		case "k", "up":
+			if m.selectedIndex > 0 {
+				m.selectedIndex--
+			}
 		}
 	case workitem.NewWorkItemMsg:
 		m.workItems = append(m.workItems, msg.WorkItem)
@@ -106,15 +115,19 @@ func (m *Model) emptyBody() string {
 func (m *Model) listBody() string {
 	items := make([]string, len(m.workItems))
 	for i, item := range m.workItems {
-		items[i] = m.itemView(item)
+		items[i] = m.itemView(item, i == m.selectedIndex)
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, items...)
 }
 
-func (m *Model) itemView(item *workitem.WorkItem) string {
-	lineStyle := lipgloss.NewStyle().Foreground(m.colorForStatus(item))
+func (m *Model) itemView(item *workitem.WorkItem, selected bool) string {
+	bg := lipgloss.NewStyle()
+	if selected {
+		bg = bg.Background(theme.Colors.BgDark)
+	}
+	lineStyle := lipgloss.NewStyle().Foreground(m.colorForStatus(item)).Inherit(bg)
 	left := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Foreground(m.colorForStatus(item)).Render("● "),
+		lipgloss.NewStyle().Foreground(m.colorForStatus(item)).Inherit(bg).Render("● "),
 		lineStyle.Render("│ "),
 		lineStyle.Render("│ "),
 		lineStyle.Render("╰─"),
@@ -129,31 +142,44 @@ func (m *Model) itemView(item *workitem.WorkItem) string {
 	}
 
 	centerWidth := m.width - lipgloss.Width(left) - 1
-	name := lipgloss.NewStyle().Width(centerWidth).MaxWidth(centerWidth).MaxHeight(1).Foreground(nameColor).Render(item.BranchName)
+	name := lipgloss.NewStyle().
+		Width(centerWidth).MaxWidth(centerWidth).MaxHeight(1).
+		Foreground(nameColor).
+		Inherit(bg).
+		Render(item.BranchName)
 	descr := lipgloss.NewStyle().
 		Height(2).MaxHeight(2).Width(centerWidth).
 		Foreground(descriptionColor).
+		Inherit(bg).
 		Render(item.Description)
-	status := m.statusView(item)
+	status := m.statusView(item, selected)
 
 	right := ""
 	// Check if name was truncated
 	if lipgloss.Width(item.BranchName) > centerWidth {
-		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render("…")
+		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Inherit(bg).Render("…")
 	} else {
-		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render(" ")
+		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Inherit(bg).Render(" ")
 	}
 	// Check if description exceeds 2 lines when wrapped
 	descrHeight := lipgloss.Height(lipgloss.NewStyle().Width(centerWidth).Render(item.Description))
 	if descrHeight > 2 {
-		right += lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render("\n\n…")
+		right += lipgloss.NewStyle().Foreground(theme.Colors.Muted).Inherit(bg).Render("\n\n…")
+	} else {
+		right += lipgloss.NewStyle().Foreground(theme.Colors.Muted).Inherit(bg).Render("\n\n ")
 	}
+
+	right += lipgloss.NewStyle().Inherit(bg).Render("\n ")
 
 	info := lipgloss.JoinVertical(lipgloss.Left, name, descr, status)
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, info, right) + "\n"
 }
 
-func (m *Model) statusView(item *workitem.WorkItem) string {
+func (m *Model) statusView(item *workitem.WorkItem, selected bool) string {
+	bg := lipgloss.NewStyle()
+	if selected {
+		bg = bg.Background(theme.Colors.BgDark)
+	}
 	status := ""
 
 	switch item.Status {
@@ -169,7 +195,7 @@ func (m *Model) statusView(item *workitem.WorkItem) string {
 		status = "Unknown"
 	}
 
-	statusStyle := lipgloss.NewStyle().Foreground(m.colorForStatus(item))
+	statusStyle := lipgloss.NewStyle().Foreground(m.colorForStatus(item)).Width(m.width-3).Inherit(bg)
 	return statusStyle.Render(fmt.Sprintf("[%s]", status))
 }
 

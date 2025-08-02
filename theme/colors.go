@@ -11,6 +11,7 @@ type ThemeColors struct {
 	Success lipgloss.Color
 	Error   lipgloss.Color
 	Info    lipgloss.Color
+	BgDark  lipgloss.Color
 }
 
 var Colors = ThemeColors{
@@ -22,4 +23,6 @@ var Colors = ThemeColors{
 	Success: lipgloss.Color("#a7e2a1"),
 	Error:   lipgloss.Color("#eba0ac"),
 	Info:    lipgloss.Color("#81d1e0"),
+	// BgDark:  lipgloss.Color("#181825"),
+	BgDark:  lipgloss.Color("#3f3d3b"),
 }
