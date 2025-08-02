@@ -8,6 +8,9 @@ type ThemeColors struct {
 	Title   lipgloss.Color
 	Muted   lipgloss.Color
 	Text    lipgloss.Color
+	Success lipgloss.Color
+	Error   lipgloss.Color
+	Info    lipgloss.Color
 }
 
 var Colors = ThemeColors{
@@ -16,4 +19,7 @@ var Colors = ThemeColors{
 	Title:   lipgloss.Color("#cba6f7"),
 	Muted:   lipgloss.Color("#9298b1"),
 	Text:    lipgloss.Color("#c6cfec"),
+	Success: lipgloss.Color("#a7e2a1"),
+	Error:   lipgloss.Color("#eba0ac"),
+	Info:    lipgloss.Color("#81d1e0"),
 }

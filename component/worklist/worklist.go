@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -112,15 +112,15 @@ func (m *Model) listBody() string {
 }
 
 func (m *Model) itemView(item *workitem.WorkItem) string {
-	lineStyle := lipgloss.NewStyle().Foreground(theme.Colors.Muted)
+	lineStyle := lipgloss.NewStyle().Foreground(m.colorForStatus(item))
 	left := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render("● "),
-		lineStyle.Render("│"),
-		lineStyle.Render("│"),
-		lineStyle.Render("╰"),
+		lipgloss.NewStyle().Foreground(m.colorForStatus(item)).Render("● "),
+		lineStyle.Render("│ "),
+		lineStyle.Render("│ "),
+		lineStyle.Render("╰─"),
 	)
 
-	nameColor := theme.Colors.Primary
+	nameColor := theme.Colors.Title
 	descriptionColor := theme.Colors.Text
 
 	if m.Overlayed {
@@ -134,7 +134,7 @@ func (m *Model) itemView(item *workitem.WorkItem) string {
 		Height(2).MaxHeight(2).Width(centerWidth).
 		Foreground(descriptionColor).
 		Render(item.Description)
-	status := lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render(fmt.Sprintf("[%s]", item.Status))
+	status := m.statusView(item)
 
 	right := ""
 	// Check if name was truncated
@@ -151,6 +151,45 @@ func (m *Model) itemView(item *workitem.WorkItem) string {
 
 	info := lipgloss.JoinVertical(lipgloss.Left, name, descr, status)
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, info, right) + "\n"
+}
+
+func (m *Model) statusView(item *workitem.WorkItem) string {
+	status := ""
+
+	switch item.Status {
+	case "PreToolUse", "PostToolUse", "UserPromptSubmit":
+		status = "Working"
+	case "Notification":
+		status = "Waiting for input"
+	case "Stop":
+		status = "Done"
+	case "", "created":
+		status = "Not Started"
+	default:
+		status = "Unknown"
+	}
+
+	statusStyle := lipgloss.NewStyle().Foreground(m.colorForStatus(item))
+	return statusStyle.Render(fmt.Sprintf("[%s]", status))
+}
+
+func (m *Model) colorForStatus(item *workitem.WorkItem) lipgloss.TerminalColor {
+	if m.Overlayed {
+		return theme.Colors.Muted
+	}
+
+	switch item.Status {
+	case "PreToolUse", "PostToolUse", "UserPromptSubmit":
+		return theme.Colors.Success
+	case "Notification":
+		return theme.Colors.Primary
+	case "Stop":
+		return theme.Colors.Info
+	case "", "created":
+		return theme.Colors.Muted
+	default:
+		return theme.Colors.Error
+	}
 }
 
 func (m *Model) SetWidth(width int) {
@@ -196,19 +235,34 @@ type statusUpdateMsg struct {
 func calcStatus(item *workitem.WorkItem, wait int) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(time.Duration(wait) * time.Second)
-		//TODO: Implement actual status update logic
-		if item.Status == "" {
-			item.Status = "Not Started 0"
-		}
-		count, err := strconv.Atoi(item.Status[len(item.Status)-1:])
-		if err != nil {
-			count = 0
-		}
+
+		// Read the last line from status-log.txt
+		status := readLastStatus(item.Id)
+
 		return statusUpdateMsg{
 			item:   item,
-			status: fmt.Sprintf("Not Started %d", count+1),
+			status: status,
 		}
 	}
+}
+
+func readLastStatus(itemId string) string {
+	statusLogPath := filepath.Join(util.AiMuxDir, itemId, "state-log.txt")
+
+	content, err := os.ReadFile(statusLogPath)
+	if err != nil {
+		return "unknown"
+	}
+
+	// Split content into lines and get the last non-empty line
+	lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+	if len(lines) == 0 {
+		return ""
+	}
+
+	lastLine := lines[len(lines)-1]
+	status := lastLine
+	return status
 }
 
 func loadWorkItems() tea.Msg {
