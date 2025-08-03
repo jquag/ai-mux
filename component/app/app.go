@@ -3,6 +3,7 @@ package app
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/jquag/ai-mux/component/footer"
 	"github.com/jquag/ai-mux/component/modal"
 	"github.com/jquag/ai-mux/component/worklist"
 	"github.com/jquag/ai-mux/theme"
@@ -13,11 +14,13 @@ type Model struct {
 	height        int
 	workListModel *worklist.Model
 	currentModal  modal.Model
+	footerModel   footer.Model
 }
 
 func New() Model {
 	return Model{
 		workListModel: worklist.New(0, 0),
+		footerModel:   footer.New(),
 	}
 }
 
@@ -47,11 +50,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentModal = modal.New(m.width, m.height, msg.Content, msg.Title, theme.Colors.Border)
 		m.currentModal.Show = true
 		m.workListModel.Overlayed = true
+		m.footerModel = m.footerModel.WithOverlayed(true)
 		return m, nil
 
 	case modal.CloseMsg:
 		m.currentModal.Show = false
 		m.workListModel.Overlayed = false
+		m.footerModel = m.footerModel.WithOverlayed(false)
 		return m, nil
 	}
 
@@ -83,9 +88,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	v := lipgloss.NewStyle().
-		Padding(0, 1).
-		Render(m.workListModel.View())
+	style := lipgloss.NewStyle().Padding(0, 1)
+
+	listView := style.Render(m.workListModel.View())
+	footerView := style.Render(m.footerModel.View())
+	v := lipgloss.JoinVertical(lipgloss.Left, listView, footerView)
 	if m.currentModal.Show {
 		m.currentModal.BackgroundView = v
 		return m.currentModal.View()
@@ -97,6 +104,8 @@ func (m Model) View() string {
 func (m *Model) updateLayout() {
 	m.workListModel.SetHeight(m.height - 2)
 	m.workListModel.SetWidth(m.width - 2)
+
+	m.footerModel = m.footerModel.WithWidth(m.width - 2)
 
 	m.currentModal = m.currentModal.WithWidth(m.width)
 	m.currentModal = m.currentModal.WithHeight(m.height)
