@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -43,14 +44,25 @@ func checkSystemRequirements() error {
 }
 
 func main() {
-	// Check for --notification flag
-	if len(os.Args) > 1 && os.Args[1] == "--notification" {
+	// Check for --event flag
+	if len(os.Args) > 1 && os.Args[1] == "--event" {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reading stdin: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Print(string(data))
+		
+		var payload util.ClaudeHookPayload
+		if err := json.Unmarshal(data, &payload); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing JSON: %v\n", err)
+			os.Exit(1)
+		}
+		
+		if err := util.HandleClaudeEvent(payload); err != nil {
+			fmt.Fprintf(os.Stderr, "Error handling event: %v\n", err)
+			os.Exit(1)
+		}
+		
 		os.Exit(0)
 	}
 
