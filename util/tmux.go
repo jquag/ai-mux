@@ -29,16 +29,18 @@ func EnsureTmuxSession(sessionName string) (bool, error) {
 }
 
 // CreateTmuxWindow creates a new tmux window in the specified session or current session
-func CreateTmuxWindow(windowName string, sessionName string) error {
-	var cmd *exec.Cmd
+// If workingDir is provided, the window will start in that directory
+func CreateTmuxWindow(windowName string, sessionName string, workingDir string) error {
+	args := []string{"new-window", "-d", "-n", windowName}
 	
-	if sessionName == "" {
-		// Create window in current session
-		cmd = exec.Command("tmux", "new-window", "-d", "-n", windowName)
-	} else {
-		// Create window in specified session
-		cmd = exec.Command("tmux", "new-window", "-d", "-t", sessionName, "-n", windowName)
+	if sessionName != "" {
+		args = append(args, "-t", sessionName)
 	}
 	
+	if workingDir != "" {
+		args = append(args, "-c", workingDir)
+	}
+	
+	cmd := exec.Command("tmux", args...)
 	return cmd.Run()
 }

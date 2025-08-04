@@ -27,7 +27,7 @@ func StartSession(workitem *data.WorkItem) tea.Cmd {
 			})
 		}
 		
-		info := setupTmuxWindow(workitem)
+		info := setupTmuxWindow(workitem, worktreePath)
 		info.WorktreeFolderMessage = worktreePath
 		if newBranch {
 			info.GitBranchMessage = fmt.Sprintf("%s (new)", workitem.BranchName)
@@ -40,10 +40,10 @@ func StartSession(workitem *data.WorkItem) tea.Cmd {
 	}
 }
 
-func setupTmuxWindow(workitem *data.WorkItem) startinfo.Model {
+func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) startinfo.Model {
 		if util.InTmuxSession() {
 			// Create window in current session
-			if err := util.CreateTmuxWindow(workitem.BranchName, ""); err != nil {
+			if err := util.CreateTmuxWindow(workitem.BranchName, "", worktreePath); err != nil {
 				return startinfo.Model{
 					Error: fmt.Errorf("failed to create tmux window: %w", err),
 				}
@@ -62,7 +62,7 @@ func setupTmuxWindow(workitem *data.WorkItem) startinfo.Model {
 				}
 			} else {
 				// Create window in ai-mux session
-				if err := util.CreateTmuxWindow(workitem.BranchName, "ai-mux"); err != nil {
+				if err := util.CreateTmuxWindow(workitem.BranchName, "ai-mux", worktreePath); err != nil {
 					return startinfo.Model{
 						Error: fmt.Errorf("failed to create tmux window in ai-mux session: %w", err),
 					}
