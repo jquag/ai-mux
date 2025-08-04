@@ -15,11 +15,6 @@ const (
 	AlertTypeError
 )
 
-type AlertMsg struct {
-	Content string
-	Type    AlertType
-}
-
 func Alert(content string, alertType AlertType) tea.Cmd {
 	title := "Alert"
 	switch alertType {

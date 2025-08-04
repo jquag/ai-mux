@@ -3,7 +3,6 @@ package app
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/jquag/ai-mux/component/alert"
 	"github.com/jquag/ai-mux/component/footer"
 	"github.com/jquag/ai-mux/component/modal"
 	"github.com/jquag/ai-mux/component/worklist"
@@ -39,12 +38,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.currentModal.Show {
 				return m, tea.Quit
 			}
-		case "9":
-			return m, alert.Alert("Testing alerts", alert.AlertTypeInfo)
-		case "8":
-			return m, alert.Alert("Testing alerts", alert.AlertTypeWarning)
-		case "7":
-			return m, alert.Alert("Testing alerts", alert.AlertTypeError)
 		}
 
 	case tea.WindowSizeMsg:
@@ -65,6 +58,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.workListModel.Overlayed = false
 		m.footerModel = m.footerModel.WithOverlayed(false)
 		return m, nil
+
 	}
 
 	// Only send key messages to the active window

@@ -30,9 +30,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	labelColor := theme.Colors.Text
 	keyColor := theme.Colors.Primary
+	borderColor := theme.Colors.Border
 	if m.overlayed {
 		labelColor = theme.Colors.Muted
 		keyColor = theme.Colors.Muted
+		borderColor = theme.Colors.Muted
 	}
 
 	views := []string{}
@@ -43,7 +45,10 @@ func (m Model) View() string {
 		)
 		views = append(views, v)
 	}
-	style := lipgloss.NewStyle().Width(m.width).Border(lipgloss.NormalBorder(), true, false, false, false).BorderForeground(theme.Colors.Border)
+	style := lipgloss.NewStyle().
+		Width(m.width).
+		Border(lipgloss.NormalBorder(), true, false, false, false).
+		BorderForeground(borderColor)
 	return style.Render(lipgloss.JoinHorizontal(lipgloss.Top, views...))
 }
 
@@ -62,6 +67,7 @@ func New() Model {
 		{"Quit", "q"},
 		{"Add", "a"},
 		{"Remove", "d"},
+		{"(Re)Start", "s"},
 		{"Open", "o"},
 		{"Info", "enter"},
 	}

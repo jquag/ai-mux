@@ -1,4 +1,4 @@
-package workitem
+package data
 
 type WorkItem struct {
 	Id          string

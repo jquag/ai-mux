@@ -26,7 +26,7 @@ func checkCommand(name string) error {
 }
 
 func checkSystemRequirements() error {
-	requiredCommands := []string{"git", "claude", "tmux", "jq"}
+	requiredCommands := []string{"git", "claude", "tmux"}
 	missingCommands := []string{}
 	
 	for _, cmd := range requiredCommands {

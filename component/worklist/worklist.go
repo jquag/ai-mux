@@ -11,9 +11,11 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/jquag/ai-mux/component/alert"
 	"github.com/jquag/ai-mux/component/modal"
 	"github.com/jquag/ai-mux/component/workform"
-	workitem "github.com/jquag/ai-mux/data"
+	"github.com/jquag/ai-mux/data"
+	"github.com/jquag/ai-mux/service"
 	"github.com/jquag/ai-mux/theme"
 	"github.com/jquag/ai-mux/util"
 )
@@ -22,7 +24,7 @@ type Model struct {
 	width         int
 	height        int
 	viewport      viewport.Model
-	workItems     []*workitem.WorkItem
+	workItems     []*data.WorkItem
 	Overlayed     bool
 	loading       bool
 	selectedIndex int
@@ -49,9 +51,12 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			if m.selectedIndex > 0 {
 				m.selectedIndex--
 			}
+		case "s":
+			return m, m.startSelected()
 		}
-	case workitem.NewWorkItemMsg:
+	case data.NewWorkItemMsg:
 		m.workItems = append(m.workItems, msg.WorkItem)
+		return m, m.startStatusPoller(msg.WorkItem)
 	case loadItemsMsg:
 		m.loading = false
 		m.workItems = msg.items
@@ -66,7 +71,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 }
 
 func (m *Model) View() string {
-	titleColor := theme.Colors.Title
+	titleColor := theme.Colors.Primary
 	borderColor := theme.Colors.Border
 
 	if m.Overlayed {
@@ -120,7 +125,7 @@ func (m *Model) listBody() string {
 	return lipgloss.JoinVertical(lipgloss.Left, items...)
 }
 
-func (m *Model) itemView(item *workitem.WorkItem, selected bool) string {
+func (m *Model) itemView(item *data.WorkItem, selected bool) string {
 	bg := lipgloss.NewStyle()
 	if selected {
 		bg = bg.Background(theme.Colors.BgDark)
@@ -172,10 +177,10 @@ func (m *Model) itemView(item *workitem.WorkItem, selected bool) string {
 	right += lipgloss.NewStyle().Inherit(bg).Render("\n ")
 
 	info := lipgloss.JoinVertical(lipgloss.Left, name, descr, status)
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, info, right) + "\n"
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, info, right)
 }
 
-func (m *Model) statusView(item *workitem.WorkItem, selected bool) string {
+func (m *Model) statusView(item *data.WorkItem, selected bool) string {
 	bg := lipgloss.NewStyle()
 	if selected {
 		bg = bg.Background(theme.Colors.BgDark)
@@ -195,11 +200,11 @@ func (m *Model) statusView(item *workitem.WorkItem, selected bool) string {
 		status = "Unknown"
 	}
 
-	statusStyle := lipgloss.NewStyle().Foreground(m.colorForStatus(item)).Width(m.width-3).Inherit(bg)
+	statusStyle := lipgloss.NewStyle().Foreground(m.colorForStatus(item)).Width(m.width - 3).Inherit(bg)
 	return statusStyle.Render(fmt.Sprintf("[%s]", status))
 }
 
-func (m *Model) colorForStatus(item *workitem.WorkItem) lipgloss.TerminalColor {
+func (m *Model) colorForStatus(item *data.WorkItem) lipgloss.TerminalColor {
 	if m.Overlayed {
 		return theme.Colors.Muted
 	}
@@ -231,18 +236,38 @@ func (m *Model) SetHeight(height int) {
 func (m *Model) startStatusPollers() tea.Cmd {
 	cmds := make([]tea.Cmd, len(m.workItems))
 	for i, item := range m.workItems {
-		cmds[i] = calcStatus(item, 0)
+		cmds[i] = m.startStatusPoller(item)
 	}
 	return tea.Batch(cmds...)
 }
 
-func (m *Model) updateStatus(item *workitem.WorkItem, status string) {
+func (m *Model) startStatusPoller(item *data.WorkItem) tea.Cmd {
+	// Start a poller for the specific item
+	return calcStatus(item, 0)
+}
+
+func (m *Model) updateStatus(item *data.WorkItem, status string) {
 	for _, existingItem := range m.workItems {
 		if existingItem == item {
 			existingItem.Status = status
 			break
 		}
 	}
+}
+
+func (m *Model) startSelected() tea.Cmd {
+	selected := m.getSelected()
+	if selected == nil || (selected.Status != "created" && selected.Status != "") {
+		return alert.Alert("This work item has alredy been started.", alert.AlertTypeWarning)
+	}
+	return service.StartSession(selected)
+}
+
+func (m *Model) getSelected() *data.WorkItem {
+	if m.selectedIndex >= 0 && m.selectedIndex < len(m.workItems) {
+		return m.workItems[m.selectedIndex]
+	}
+	return nil
 }
 
 func New(width, height int) *Model {
@@ -254,11 +279,11 @@ func New(width, height int) *Model {
 }
 
 type statusUpdateMsg struct {
-	item   *workitem.WorkItem
+	item   *data.WorkItem
 	status string
 }
 
-func calcStatus(item *workitem.WorkItem, wait int) tea.Cmd {
+func calcStatus(item *data.WorkItem, wait int) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(time.Duration(wait) * time.Second)
 
@@ -292,7 +317,7 @@ func readLastStatus(itemId string) string {
 }
 
 func loadWorkItems() tea.Msg {
-	var items []*workitem.WorkItem
+	var items []*data.WorkItem
 
 	// Check if .ai-mux directory exists
 	if _, err := os.Stat(util.AiMuxDir); os.IsNotExist(err) {
@@ -313,14 +338,14 @@ func loadWorkItems() tea.Msg {
 
 		// Read item.json from each subdirectory
 		itemPath := filepath.Join(util.AiMuxDir, entry.Name(), "item.json")
-		data, err := os.ReadFile(itemPath)
+		fileData, err := os.ReadFile(itemPath)
 		if err != nil {
 			// Skip items that can't be read
 			continue
 		}
 
-		var item workitem.WorkItem
-		if err := json.Unmarshal(data, &item); err != nil {
+		var item data.WorkItem
+		if err := json.Unmarshal(fileData, &item); err != nil {
 			// Skip items that can't be parsed
 			continue
 		}
@@ -333,5 +358,5 @@ func loadWorkItems() tea.Msg {
 
 type loadItemsMsg struct {
 	err   error
-	items []*workitem.WorkItem
+	items []*data.WorkItem
 }
