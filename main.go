@@ -58,7 +58,13 @@ func main() {
 			os.Exit(1)
 		}
 		
-		if err := util.HandleClaudeEvent(payload); err != nil {
+		// Get AI_MUX_DIR from environment or use default
+		aiMuxDir := os.Getenv("AI_MUX_DIR")
+		if aiMuxDir == "" {
+			aiMuxDir = util.AiMuxDir
+		}
+		
+		if err := util.HandleClaudeEvent(payload, aiMuxDir); err != nil {
 			fmt.Fprintf(os.Stderr, "Error handling event: %v\n", err)
 			os.Exit(1)
 		}

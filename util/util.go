@@ -47,3 +47,9 @@ func EnsureAiMuxDir() error {
 	}
 	return nil
 }
+
+// ShellQuote escapes a string for safe use in shell commands
+func ShellQuote(s string) string {
+	// Replace single quotes with '\'' and wrap in single quotes
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}

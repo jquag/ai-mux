@@ -44,3 +44,15 @@ func CreateTmuxWindow(windowName string, sessionName string, workingDir string) 
 	cmd := exec.Command("tmux", args...)
 	return cmd.Run()
 }
+
+// RunCommandInTmuxWindow runs a command in a specific tmux window
+func RunCommandInTmuxWindow(windowName string, sessionName string, command string) error {
+	target := windowName
+	if sessionName != "" {
+		target = sessionName + ":" + windowName
+	}
+	
+	// Send the command to the tmux window
+	cmd := exec.Command("tmux", "send-keys", "-t", target, command, "Enter")
+	return cmd.Run()
+}

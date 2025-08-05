@@ -13,9 +13,9 @@ type ClaudeHookPayload struct {
 	HookEventName  string `json:"hook_event_name"`
 }
 
-func HandleClaudeEvent(payload ClaudeHookPayload) error {
+func HandleClaudeEvent(payload ClaudeHookPayload, aiMuxDir string) error {
 	// Construct the status log path
-	statusLogPath := filepath.Join(AiMuxDir, payload.SessionID, "state-log.txt")
+	statusLogPath := filepath.Join(aiMuxDir, payload.SessionID, "state-log.txt")
 	
 	// Ensure the directory exists
 	dir := filepath.Dir(statusLogPath)
