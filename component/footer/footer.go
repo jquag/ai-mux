@@ -66,7 +66,7 @@ func New() Model {
 	mappings := []mapping{
 		{"Quit", "q"},
 		{"Add", "a"},
-		{"Remove", "d"},
+		{"Close", "c"},
 		{"(Re)Start", "s"},
 		{"Open", "o"},
 		{"Info", "enter"},

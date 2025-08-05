@@ -56,3 +56,15 @@ func RunCommandInTmuxWindow(windowName string, sessionName string, command strin
 	cmd := exec.Command("tmux", "send-keys", "-t", target, command, "Enter")
 	return cmd.Run()
 }
+
+// KillTmuxWindow kills a specific tmux window
+func KillTmuxWindow(windowName string, sessionName string) error {
+	target := windowName
+	if sessionName != "" {
+		target = sessionName + ":" + windowName
+	}
+	
+	// Kill the tmux window
+	cmd := exec.Command("tmux", "kill-window", "-t", target)
+	return cmd.Run()
+}

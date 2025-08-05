@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jquag/ai-mux/component/alert"
 	"github.com/jquag/ai-mux/component/startinfo"
 	data "github.com/jquag/ai-mux/data"
 	"github.com/jquag/ai-mux/util"
@@ -47,6 +48,48 @@ func StartSession(workitem *data.WorkItem) tea.Cmd {
 		}
 		
 		return startinfo.Alert(info)
+	}
+}
+
+func CloseSession(workitem *data.WorkItem) tea.Cmd {
+	return func() tea.Msg {
+		// Calculate session name once
+		sessionName := ""
+		if !util.InTmuxSession() {
+			sessionName = "ai-mux"
+		}
+		
+		// Check if work item has been started
+		isStarted := workitem.Status != "created" && workitem.Status != ""
+		
+		if isStarted {
+			// Get worktree path
+			cwd, err := os.Getwd()
+			if err != nil {
+				return alert.Alert("Failed to get current directory: "+err.Error(), alert.AlertTypeError)()
+			}
+			mainFolderName := filepath.Base(cwd)
+			worktreePath := filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName), workitem.BranchName)
+			
+			// Check if worktree is clean and tell claude to commit if needed
+			if clean, err := util.IsWorktreeClean(worktreePath); err == nil && !clean {
+				util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "commit the changes")
+			}
+			
+			// Remove tmux window
+			util.KillTmuxWindow(workitem.BranchName, sessionName)
+			
+			// Remove git worktree
+			util.RemoveWorktree(worktreePath)
+		}
+		
+		// Always remove work item data at the end
+		workItemDir := filepath.Join(util.AiMuxDir, workitem.Id)
+		if err := os.RemoveAll(workItemDir); err != nil {
+			return alert.Alert("Failed to remove work item data: "+err.Error(), alert.AlertTypeError)()
+		}
+		
+		return alert.Alert("Work item '"+workitem.BranchName+"' closed successfully", alert.AlertTypeInfo)()
 	}
 }
 

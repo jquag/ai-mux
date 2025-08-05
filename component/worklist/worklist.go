@@ -53,6 +53,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			}
 		case "s":
 			return m, m.startSelected()
+		case "c":
+			return m, m.closeSelected()
 		}
 	case data.NewWorkItemMsg:
 		m.workItems = append(m.workItems, msg.WorkItem)
@@ -261,6 +263,14 @@ func (m *Model) startSelected() tea.Cmd {
 		return alert.Alert("This work item has alredy been started.", alert.AlertTypeWarning)
 	}
 	return service.StartSession(selected)
+}
+
+func (m *Model) closeSelected() tea.Cmd {
+	selected := m.getSelected()
+	if selected == nil {
+		return nil
+	}
+	return service.CloseSession(selected)
 }
 
 func (m *Model) getSelected() *data.WorkItem {

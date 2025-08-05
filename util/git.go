@@ -50,3 +50,25 @@ func CreateWorktree(branchName string) (string, bool, error) {
 	
 	return worktreePath, !branchExists, nil
 }
+
+// RemoveWorktree removes a git worktree
+func RemoveWorktree(worktreePath string) error {
+	cmd := exec.Command("git", "worktree", "remove", "-f", worktreePath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to remove worktree: %w - %s", err, string(output))
+	}
+	return nil
+}
+
+// IsWorktreeClean checks if a worktree has uncommitted changes
+func IsWorktreeClean(worktreePath string) (bool, error) {
+	cmd := exec.Command("git", "-C", worktreePath, "status", "--porcelain")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("failed to check worktree status: %w - %s", err, string(output))
+	}
+	
+	// If output is empty, the worktree is clean
+	return len(output) == 0, nil
+}
