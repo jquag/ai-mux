@@ -53,7 +53,7 @@ func CreateWorktree(branchName string) (string, bool, error) {
 
 // RemoveWorktree removes a git worktree
 func RemoveWorktree(worktreePath string) error {
-	cmd := exec.Command("git", "worktree", "remove", "-f", worktreePath)
+	cmd := exec.Command("git", "worktree", "remove", worktreePath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to remove worktree: %w - %s", err, string(output))

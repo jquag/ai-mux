@@ -6,8 +6,13 @@ type WorkItem struct {
 	Description string
 	PlanMode    bool
 	Status      string
+	IsClosing   bool
 }
 
 type NewWorkItemMsg struct {
+	WorkItem *WorkItem
+}
+
+type WorkItemRemovedMsg struct {
 	WorkItem *WorkItem
 }

@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -52,4 +53,29 @@ func EnsureAiMuxDir() error {
 func ShellQuote(s string) string {
 	// Replace single quotes with '\'' and wrap in single quotes
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
+
+// WriteStatusLog writes a status to the work item's status log
+func WriteStatusLog(workItemId string, status string, aiMuxDir string) error {
+	statusLogPath := filepath.Join(aiMuxDir, workItemId, "state-log.txt")
+	
+	// Ensure the directory exists
+	dir := filepath.Dir(statusLogPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+	
+	// Open the file in append mode
+	file, err := os.OpenFile(statusLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open status log: %w", err)
+	}
+	defer file.Close()
+	
+	// Write a newline first, then the status
+	if _, err := file.WriteString("\n" + status); err != nil {
+		return fmt.Errorf("failed to write to status log: %w", err)
+	}
+	
+	return nil
 }

@@ -59,6 +59,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	case data.NewWorkItemMsg:
 		m.workItems = append(m.workItems, msg.WorkItem)
 		return m, m.startStatusPoller(msg.WorkItem)
+	case data.WorkItemRemovedMsg:
+		m.removeWorkItem(msg.WorkItem.Id)
+		return m, alert.Alert("Work item '"+msg.WorkItem.BranchName+"' closed successfully", alert.AlertTypeInfo)
 	case loadItemsMsg:
 		m.loading = false
 		m.workItems = msg.items
@@ -66,6 +69,10 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		return m, m.startStatusPollers()
 	case statusUpdateMsg:
 		m.updateStatus(msg.item, msg.status)
+		if msg.item.IsClosing && msg.status == "Stop" {
+			//finished preping for close
+			return m, tea.Batch(m.closeSelected(), calcStatus(msg.item, 3))
+		}
 		return m, calcStatus(msg.item, 3)
 	}
 
@@ -191,15 +198,21 @@ func (m *Model) statusView(item *data.WorkItem, selected bool) string {
 
 	switch item.Status {
 	case "PreToolUse", "PostToolUse", "UserPromptSubmit":
-		status = "Working"
+		status = "Working..."
 	case "Notification":
 		status = "Waiting for input"
 	case "Stop":
 		status = "Done"
 	case "", "created":
 		status = "Not Started"
+	case "PrepForClosing":
+		status = "Closing..."
 	default:
 		status = "Unknown"
+	}
+
+	if item.Status != "Notification" && item.IsClosing {
+		status = "Closing..."
 	}
 
 	statusStyle := lipgloss.NewStyle().Foreground(m.colorForStatus(item)).Width(m.width - 3).Inherit(bg)
@@ -211,6 +224,10 @@ func (m *Model) colorForStatus(item *data.WorkItem) lipgloss.TerminalColor {
 		return theme.Colors.Muted
 	}
 
+	if item.IsClosing && item.Status != "Notification" {
+		return theme.Colors.Error
+	}
+
 	switch item.Status {
 	case "PreToolUse", "PostToolUse", "UserPromptSubmit":
 		return theme.Colors.Success
@@ -220,6 +237,8 @@ func (m *Model) colorForStatus(item *data.WorkItem) lipgloss.TerminalColor {
 		return theme.Colors.Info
 	case "", "created":
 		return theme.Colors.Muted
+	case "PrepForClosing":
+		return theme.Colors.Error
 	default:
 		return theme.Colors.Error
 	}
@@ -278,6 +297,21 @@ func (m *Model) getSelected() *data.WorkItem {
 		return m.workItems[m.selectedIndex]
 	}
 	return nil
+}
+
+func (m *Model) removeWorkItem(id string) {
+	for i, item := range m.workItems {
+		if item.Id == id {
+			m.workItems = append(m.workItems[:i], m.workItems[i+1:]...)
+			// Adjust selected index if necessary
+			if m.selectedIndex >= len(m.workItems) && len(m.workItems) > 0 {
+				m.selectedIndex = len(m.workItems) - 1
+			} else if len(m.workItems) == 0 {
+				m.selectedIndex = 0
+			}
+			break
+		}
+	}
 }
 
 func New(width, height int) *Model {

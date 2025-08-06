@@ -73,7 +73,17 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 			
 			// Check if worktree is clean and tell claude to commit if needed
 			if clean, err := util.IsWorktreeClean(worktreePath); err == nil && !clean {
-				util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "commit the changes")
+				err := util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "commit the changes")
+				if err != nil {
+					return alert.Alert("Failed to commit changes: "+err.Error(), alert.AlertTypeError)()
+				}
+				util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "C-m") // Have to send a carriage return by itself for claude
+				workitem.IsClosing = true // Indicator so that when claude is done we will try the CloseSession again
+				
+				// Write PrepForClosing status
+				util.WriteStatusLog(workitem.Id, "PrepForClosing", util.AiMuxDir)
+				
+				return nil // Need to wait for claude to finish commiting
 			}
 			
 			// Remove tmux window
@@ -89,7 +99,9 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 			return alert.Alert("Failed to remove work item data: "+err.Error(), alert.AlertTypeError)()
 		}
 		
-		return alert.Alert("Work item '"+workitem.BranchName+"' closed successfully", alert.AlertTypeInfo)()
+		return data.WorkItemRemovedMsg{
+			WorkItem: workitem,
+		}
 	}
 }
 
