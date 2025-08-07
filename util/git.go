@@ -8,12 +8,12 @@ import (
 )
 
 // CreateWorktree creates a new git worktree with a new or existing branch
-// Returns the worktree path and whether a new branch was created
-func CreateWorktree(branchName string) (string, bool, error) {
+// Returns the worktree path
+func CreateWorktree(branchName string) (string, error) {
 	// Get the current directory name (main folder)
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", false, fmt.Errorf("failed to get current directory: %w", err)
+		return "", fmt.Errorf("failed to get current directory: %w", err)
 	}
 	mainFolderName := filepath.Base(cwd)
 	
@@ -24,10 +24,10 @@ func CreateWorktree(branchName string) (string, bool, error) {
 	// Ensure the worktrees directory exists
 	absWorktreesDir, err := filepath.Abs(worktreesDir)
 	if err != nil {
-		return "", false, fmt.Errorf("failed to get absolute path: %w", err)
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
 	}
 	if err := os.MkdirAll(absWorktreesDir, 0755); err != nil {
-		return "", false, fmt.Errorf("failed to create worktrees directory: %w", err)
+		return "", fmt.Errorf("failed to create worktrees directory: %w", err)
 	}
 	
 	// Check if branch already exists
@@ -45,10 +45,10 @@ func CreateWorktree(branchName string) (string, bool, error) {
 	
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", false, fmt.Errorf("failed to create worktree: %w - %s", err, string(output))
+		return "", fmt.Errorf("failed to create worktree: %w - %s", err, string(output))
 	}
 	
-	return worktreePath, !branchExists, nil
+	return worktreePath, nil
 }
 
 // RemoveWorktree removes a git worktree
