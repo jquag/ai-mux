@@ -73,14 +73,14 @@ func RunCommandInTmuxPane(paneId string, command string) error {
 }
 
 // SplitTmuxWindow creates a vertical split in the specified window
-func SplitTmuxWindow(windowName string, sessionName string) error {
+func SplitTmuxWindow(windowName string, sessionName string, folder string) error {
 	target := windowName
 	if sessionName != "" {
 		target = sessionName + ":" + windowName
 	}
 	
 	// Create vertical split
-	cmd := exec.Command("tmux", "split-window", "-v", "-t", target)
+	cmd := exec.Command("tmux", "split-window", "-v", "-t", target, "-c", folder)
 	return cmd.Run()
 }
 

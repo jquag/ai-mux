@@ -117,12 +117,12 @@ func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
 	if editor == "" {
 		editor = "vim" // Default fallback
 	}
-	if err := util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, editor+" ."); err != nil {
+	if err := util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, editor); err != nil {
 		return fmt.Errorf("failed to start editor: %w", err)
 	}
 	
 	// Create vertical split
-	if err := util.SplitTmuxWindow(workitem.BranchName, sessionName); err != nil {
+	if err := util.SplitTmuxWindow(workitem.BranchName, sessionName, worktreePath); err != nil {
 		return fmt.Errorf("failed to split tmux window: %w", err)
 	}
 	
@@ -132,7 +132,7 @@ func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
 	if sessionName != "" {
 		target = sessionName + ":" + workitem.BranchName
 	}
-	bottomPane := target + ".1"
+	bottomPane := target + ".{bottom}"
 	
 	util.SetPaneVariable(bottomPane, "role", "claude-ai")
 	util.SetPaneVariable(bottomPane, "workitem-id", workitem.Id)
