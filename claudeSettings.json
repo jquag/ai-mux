@@ -1,4 +1,8 @@
 {
+  "allowedTools": [
+    "Bash(git add:*)",
+    "Bash(git commit:*)"
+  ],
   "hooks": {
     "Notification": [
       {
