@@ -62,7 +62,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		return m, m.startStatusPoller(msg.WorkItem)
 	case data.WorkItemRemovedMsg:
 		m.removeWorkItem(msg.WorkItem.Id)
-		return m, alert.Alert("Work item '"+msg.WorkItem.BranchName+"' closed successfully", alert.AlertTypeInfo)
+		return m, nil
 	case loadItemsMsg:
 		m.loading = false
 		m.workItems = msg.items
