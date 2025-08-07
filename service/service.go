@@ -47,6 +47,10 @@ func StartSession(workitem *data.WorkItem) tea.Cmd {
 			info.Error = err
 			return startinfo.Alert(info)
 		}
+
+		// Write PrepStarting status
+		util.WriteStatusLog(workitem.Id, "Starting", util.AiMuxDir)
+		workitem.Status = "Starting" // Also set here so that the UI can update immediately
 		
 		return startinfo.Alert(info)
 	}
@@ -83,6 +87,7 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 				
 				// Write PrepForClosing status
 				util.WriteStatusLog(workitem.Id, "PrepForClosing", util.AiMuxDir)
+				workitem.Status = "PrepForClosing" // Also set here so that the UI can update immediately
 				
 				return nil // Need to wait for claude to finish commiting
 			}

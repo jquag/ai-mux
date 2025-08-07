@@ -199,6 +199,8 @@ func (m *Model) statusView(item *data.WorkItem, selected bool) string {
 	switch item.Status {
 	case "PreToolUse", "PostToolUse", "UserPromptSubmit":
 		status = "Working..."
+	case "Starting":
+		status = "Starting..."
 	case "Notification":
 		status = "Waiting for input"
 	case "Stop":
@@ -233,7 +235,7 @@ func (m *Model) colorForStatus(item *data.WorkItem) lipgloss.TerminalColor {
 	}
 
 	switch item.Status {
-	case "PreToolUse", "PostToolUse", "UserPromptSubmit":
+	case "PreToolUse", "PostToolUse", "UserPromptSubmit", "Starting":
 		return theme.Colors.Success
 	case "Notification":
 		return theme.Colors.Primary
