@@ -331,7 +331,7 @@ func (m *Model) openSelected() tea.Cmd {
 		return alert.Alert(fmt.Sprintf("Failed to switch to tmux window: %v", err), alert.AlertTypeError)
 	}
 
-	return alert.Alert(fmt.Sprintf("Switched to tmux window '%s'", selected.BranchName), alert.AlertTypeInfo)
+	return nil
 }
 
 func (m *Model) getSelected() *data.WorkItem {
