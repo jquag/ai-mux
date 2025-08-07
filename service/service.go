@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jquag/ai-mux/component/alert"
@@ -176,6 +177,12 @@ func startClaudeInWindow(workitem *data.WorkItem, info startinfo.Model) error {
 	}
 	
 	// Run the command in the tmux window
-	return util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, claudeCmd)
+	err = util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, claudeCmd)
+
+	// Wait for claude to bring up the trust prompt then automatically accept it
+	// This is a hack but I didn't see any other way to do it and claude does not provide a notification when this prompt appears
+	time.Sleep(2 * time.Second)
+	util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "Enter")
+	return err
 }
 
