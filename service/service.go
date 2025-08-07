@@ -62,12 +62,18 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 
 			// Check if worktree is clean and tell claude to commit if needed
 			if clean, err := util.IsWorktreeClean(worktreePath); err == nil && !clean {
-				err := util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "commit the changes")
+				// Find Claude pane by custom variable
+				claudePaneId, err := util.FindPaneByVariable(workitem.BranchName, sessionName, "role", "claude-ai")
+				if err != nil {
+					return alert.Alert("Could not find Claude pane: "+err.Error(), alert.AlertTypeError)()
+				}
+				
+				err = util.RunCommandInTmuxPane(claudePaneId, "commit the changes")
 				if err != nil {
 					return alert.Alert("Failed to commit changes: "+err.Error(), alert.AlertTypeError)()
 				}
-				util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "C-m") // Have to send a carriage return by itself for claude
-				workitem.IsClosing = true                                            // Indicator so that when claude is done we will try the CloseSession again
+				util.RunCommandInTmuxPane(claudePaneId, "C-m") // Have to send a carriage return by itself for claude
+				workitem.IsClosing = true                      // Indicator so that when claude is done we will try the CloseSession again
 
 				return nil // Need to wait for claude to finish commiting
 			}
@@ -92,21 +98,45 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 }
 
 func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
-	if util.InTmuxSession() {
-		// Create window in current session
-		if err := util.CreateTmuxWindow(workitem.BranchName, "", worktreePath); err != nil {
-			return fmt.Errorf("failed to create tmux window: %w", err)
-		}
-	} else {
+	sessionName := ""
+	if !util.InTmuxSession() {
+		sessionName = "ai-mux"
 		// Ensure ai-mux session exists
 		if _, err := util.EnsureTmuxSession("ai-mux"); err != nil {
 			return fmt.Errorf("failed to create tmux session 'ai-mux': %w", err)
 		}
-		// Create window in ai-mux session
-		if err := util.CreateTmuxWindow(workitem.BranchName, "ai-mux", worktreePath); err != nil {
-			return fmt.Errorf("failed to create tmux window in ai-mux session: %w", err)
-		}
 	}
+	
+	// Create window
+	if err := util.CreateTmuxWindow(workitem.BranchName, sessionName, worktreePath); err != nil {
+		return fmt.Errorf("failed to create tmux window: %w", err)
+	}
+	
+	// Start editor in the top pane (original pane)
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vim" // Default fallback
+	}
+	if err := util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, editor+" ."); err != nil {
+		return fmt.Errorf("failed to start editor: %w", err)
+	}
+	
+	// Create vertical split
+	if err := util.SplitTmuxWindow(workitem.BranchName, sessionName); err != nil {
+		return fmt.Errorf("failed to split tmux window: %w", err)
+	}
+	
+	// Find the bottom pane (the newly created one) and set custom variables for identification
+	// The new pane should be .1 (bottom pane)
+	target := workitem.BranchName
+	if sessionName != "" {
+		target = sessionName + ":" + workitem.BranchName
+	}
+	bottomPane := target + ".1"
+	
+	util.SetPaneVariable(bottomPane, "role", "claude-ai")
+	util.SetPaneVariable(bottomPane, "workitem-id", workitem.Id)
+	
 	return nil
 }
 
@@ -133,18 +163,24 @@ func startClaudeInWindow(workitem *data.WorkItem) error {
 	claudeCmd := fmt.Sprintf("AI_MUX_DIR=%s claude --session-id %s --settings %s --permission-mode %s %s",
 		aiMuxDirPath, workitem.Id, settingsPath, permissionMode, util.ShellQuote(workitem.Description))
 
-	// Determine the session name based on tmux context
+	// Determine session name
 	sessionName := ""
 	if !util.InTmuxSession() {
 		sessionName = "ai-mux"
 	}
+	
+	// Find Claude pane by custom variable
+	claudePaneId, err := util.FindPaneByVariable(workitem.BranchName, sessionName, "role", "claude-ai")
+	if err != nil {
+		return fmt.Errorf("could not find Claude pane: %w", err)
+	}
 
-	// Run the command in the tmux window
-	err = util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, claudeCmd)
+	// Run the command in the Claude pane
+	err = util.RunCommandInTmuxPane(claudePaneId, claudeCmd)
 
 	// Wait for claude to bring up the trust prompt then automatically accept it
 	// This is a hack but I didn't see any other way to do it and claude does not provide a notification when this prompt appears
 	time.Sleep(2 * time.Second)
-	util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "Enter")
+	util.RunCommandInTmuxPane(claudePaneId, "Enter")
 	return err
 }

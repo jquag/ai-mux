@@ -1,8 +1,10 @@
 package util
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func InTmuxSession() bool {
@@ -58,6 +60,61 @@ func RunCommandInTmuxWindow(windowName string, sessionName string, command strin
 	cmd = exec.Command("tmux", "send-keys", "-t", target, "Enter")
 	cmd.Run()
 	return nil
+}
+
+// RunCommandInTmuxPane runs a command in a specific tmux pane by pane ID
+func RunCommandInTmuxPane(paneId string, command string) error {
+	// Send the command to the tmux pane
+	cmd := exec.Command("tmux", "send-keys", "-t", paneId, command)
+	cmd.Run()
+	cmd = exec.Command("tmux", "send-keys", "-t", paneId, "Enter")
+	cmd.Run()
+	return nil
+}
+
+// SplitTmuxWindow creates a vertical split in the specified window
+func SplitTmuxWindow(windowName string, sessionName string) error {
+	target := windowName
+	if sessionName != "" {
+		target = sessionName + ":" + windowName
+	}
+	
+	// Create vertical split
+	cmd := exec.Command("tmux", "split-window", "-v", "-t", target)
+	return cmd.Run()
+}
+
+// SetPaneVariable sets a custom variable on a specific pane
+func SetPaneVariable(paneId string, variable string, value string) error {
+	cmd := exec.Command("tmux", "set", "-p", "-t", paneId, "@"+variable, value)
+	return cmd.Run()
+}
+
+// FindPaneByVariable finds a pane by searching for a custom variable value in a specific window
+func FindPaneByVariable(windowName string, sessionName string, variable string, value string) (string, error) {
+	target := windowName
+	if sessionName != "" {
+		target = sessionName + ":" + windowName
+	}
+	
+	cmd := exec.Command("tmux", "list-panes", "-t", target, "-F", "#{pane_id} #{@"+variable+"}")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " ", 2)
+		if len(parts) == 2 && parts[1] == value {
+			return parts[0], nil
+		}
+	}
+	
+	return "", fmt.Errorf("no pane found with %s=%s in window %s", variable, value, target)
 }
 
 // KillTmuxWindow kills a specific tmux window
