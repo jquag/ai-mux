@@ -2,7 +2,7 @@ package data
 
 type WorkItem struct {
 	Id          string
-	BranchName  string
+	ShortName   string
 	Description string
 	PlanMode    bool
 	Status      string

@@ -55,6 +55,12 @@ func ShellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
+// ToSafeName converts a short name to be safe for tmux window names and git branch names
+// by replacing spaces with dashes
+func ToSafeName(shortName string) string {
+	return strings.ReplaceAll(shortName, " ", "-")
+}
+
 // WriteStatusLog writes a status to the work item's status log
 func WriteStatusLog(workItemId string, status string, aiMuxDir string) error {
 	statusLogPath := filepath.Join(aiMuxDir, workItemId, "state-log.txt")

@@ -22,7 +22,8 @@ type StartSessionMsg struct {
 
 func StartSession(workitem *data.WorkItem) tea.Cmd {
 	return func() tea.Msg {
-		worktreePath, err := util.CreateWorktree(workitem.BranchName)
+		safeName := util.ToSafeName(workitem.ShortName)
+		worktreePath, err := util.CreateWorktree(safeName)
 		if err != nil {
 			return alert.Alert(fmt.Sprintf("Failed to create worktree: %v", err), alert.AlertTypeError)()
 		}
@@ -58,12 +59,13 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 				return alert.Alert("Failed to get current directory: "+err.Error(), alert.AlertTypeError)()
 			}
 			mainFolderName := filepath.Base(cwd)
-			worktreePath := filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName), workitem.BranchName)
+			safeName := util.ToSafeName(workitem.ShortName)
+			worktreePath := filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName), safeName)
 
 			// Check if worktree is clean and tell claude to commit if needed
 			if clean, err := util.IsWorktreeClean(worktreePath); err == nil && !clean {
 				// Find Claude pane by custom variable
-				claudePaneId, err := util.FindPaneByVariable(workitem.BranchName, sessionName, "role", "claude-ai")
+				claudePaneId, err := util.FindPaneByVariable(safeName, sessionName, "role", "claude-ai")
 				if err != nil {
 					return alert.Alert("Could not find Claude pane: "+err.Error(), alert.AlertTypeError)()
 				}
@@ -78,7 +80,7 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 			}
 
 			// Remove tmux window
-			util.KillTmuxWindow(workitem.BranchName, sessionName)
+			util.KillTmuxWindow(safeName, sessionName)
 
 			// Remove git worktree
 			util.RemoveWorktree(worktreePath)
@@ -107,7 +109,8 @@ func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
 	}
 	
 	// Create window
-	if err := util.CreateTmuxWindow(workitem.BranchName, sessionName, worktreePath); err != nil {
+	safeName := util.ToSafeName(workitem.ShortName)
+	if err := util.CreateTmuxWindow(safeName, sessionName, worktreePath); err != nil {
 		return fmt.Errorf("failed to create tmux window: %w", err)
 	}
 	
@@ -116,20 +119,20 @@ func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
 	if editor == "" {
 		editor = "vim" // Default fallback
 	}
-	if err := util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, editor); err != nil {
+	if err := util.RunCommandInTmuxWindow(safeName, sessionName, editor); err != nil {
 		return fmt.Errorf("failed to start editor: %w", err)
 	}
 	
 	// Create vertical split
-	if err := util.SplitTmuxWindow(workitem.BranchName, sessionName, worktreePath); err != nil {
+	if err := util.SplitTmuxWindow(safeName, sessionName, worktreePath); err != nil {
 		return fmt.Errorf("failed to split tmux window: %w", err)
 	}
 	
 	// Find the bottom pane (the newly created one) and set custom variables for identification
 	// The new pane should be .1 (bottom pane)
-	target := workitem.BranchName
+	target := safeName
 	if sessionName != "" {
-		target = sessionName + ":" + workitem.BranchName
+		target = sessionName + ":" + safeName
 	}
 	bottomPane := target + ".{bottom}"
 	
@@ -169,7 +172,8 @@ func startClaudeInWindow(workitem *data.WorkItem) error {
 	}
 	
 	// Find Claude pane by custom variable
-	claudePaneId, err := util.FindPaneByVariable(workitem.BranchName, sessionName, "role", "claude-ai")
+	safeName := util.ToSafeName(workitem.ShortName)
+	claudePaneId, err := util.FindPaneByVariable(safeName, sessionName, "role", "claude-ai")
 	if err != nil {
 		return fmt.Errorf("could not find Claude pane: %w", err)
 	}

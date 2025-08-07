@@ -62,7 +62,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		return m, m.startStatusPoller(msg.WorkItem)
 	case data.WorkItemRemovedMsg:
 		m.removeWorkItem(msg.WorkItem.Id)
-		return m, alert.Alert("Work item '"+msg.WorkItem.BranchName+"' closed successfully", alert.AlertTypeInfo)
+		return m, alert.Alert("Work item '"+msg.WorkItem.ShortName+"' closed successfully", alert.AlertTypeInfo)
 	case loadItemsMsg:
 		m.loading = false
 		m.workItems = msg.items
@@ -161,7 +161,7 @@ func (m *Model) itemView(item *data.WorkItem, selected bool) string {
 		Width(centerWidth).MaxWidth(centerWidth).MaxHeight(1).
 		Foreground(nameColor).
 		Inherit(bg).
-		Render(item.BranchName)
+		Render(item.ShortName)
 	descr := lipgloss.NewStyle().
 		Height(2).MaxHeight(2).Width(centerWidth).
 		Foreground(descriptionColor).
@@ -171,7 +171,7 @@ func (m *Model) itemView(item *data.WorkItem, selected bool) string {
 
 	right := ""
 	// Check if name was truncated
-	if lipgloss.Width(item.BranchName) > centerWidth {
+	if lipgloss.Width(item.ShortName) > centerWidth {
 		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Inherit(bg).Render("…")
 	} else {
 		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Inherit(bg).Render(" ")
