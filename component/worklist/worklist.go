@@ -161,7 +161,7 @@ func (m *Model) itemView(item *data.WorkItem, selected bool) string {
 		Width(centerWidth).MaxWidth(centerWidth).MaxHeight(1).
 		Foreground(nameColor).
 		Inherit(bg).
-		Render(item.BranchName)
+		Render(item.ShortName)
 	descr := lipgloss.NewStyle().
 		Height(2).MaxHeight(2).Width(centerWidth).
 		Foreground(descriptionColor).
@@ -171,7 +171,7 @@ func (m *Model) itemView(item *data.WorkItem, selected bool) string {
 
 	right := ""
 	// Check if name was truncated
-	if lipgloss.Width(item.BranchName) > centerWidth {
+	if lipgloss.Width(item.ShortName) > centerWidth {
 		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Inherit(bg).Render("…")
 	} else {
 		right = lipgloss.NewStyle().Foreground(theme.Colors.Muted).Inherit(bg).Render(" ")

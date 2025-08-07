@@ -20,7 +20,7 @@ type Model struct {
 	width     int
 	height    int
 
-	branchName    string
+	shortName    string
 	planMode bool
 	description   string
 }
@@ -75,8 +75,8 @@ func New() Model {
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
-				Key("branchName").
-				Title("Branch name"),
+				Key("shortName").
+				Title("Short name"),
 			huh.NewText().
 				Key("description").
 				Title("Description"),
@@ -93,7 +93,7 @@ func New() Model {
 func (m Model) submitCmd() tea.Cmd {
 	workItem := &workitem.WorkItem{
 		Id:          uuid.New().String(),
-		BranchName:  m.form.GetString("branchName"),
+		ShortName:  m.form.GetString("shortName"),
 		Description: m.form.GetString("description"),
 		PlanMode:    m.form.GetBool("startWithPlan"),
 	}
