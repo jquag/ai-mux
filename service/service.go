@@ -72,7 +72,6 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 				if err != nil {
 					return alert.Alert("Failed to commit changes: "+err.Error(), alert.AlertTypeError)()
 				}
-				util.RunCommandInTmuxPane(claudePaneId, "C-m") // Have to send a carriage return by itself for claude
 				workitem.IsClosing = true                      // Indicator so that when claude is done we will try the CloseSession again
 
 				return nil // Need to wait for claude to finish commiting
