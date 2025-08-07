@@ -95,3 +95,8 @@ Key areas needing work:
 - `workform.go` has compilation errors (missing imports, undefined types)
 - No persistence layer implemented
 - Work item data structures not yet defined
+
+## Development Guidance
+
+- Since this is a TUI, do not try to run the program to test things. I will test it myself.
+- Don't create builds to test changes.
