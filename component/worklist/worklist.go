@@ -204,7 +204,11 @@ func (m *Model) statusView(item *data.WorkItem, selected bool) string {
 	case "Stop":
 		status = "Done"
 	case "", "created":
-		status = "Not Started"
+		if item.PlanMode {
+			status = "Plan Not Started"
+		} else {
+			status = "Not Started"
+		}
 	case "PrepForClosing":
 		status = "Closing..."
 	default:
