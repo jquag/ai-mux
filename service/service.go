@@ -26,20 +26,16 @@ func StartSession(workitem *data.WorkItem) tea.Cmd {
 		if err != nil {
 			return alert.Alert(fmt.Sprintf("Failed to create worktree: %v", err), alert.AlertTypeError)()
 		}
-		
+
 		if err := setupTmuxWindow(workitem, worktreePath); err != nil {
 			return alert.Alert(err.Error(), alert.AlertTypeError)()
 		}
-		
+
 		// Start Claude Code in the tmux window
 		if err := startClaudeInWindow(workitem); err != nil {
 			return alert.Alert(fmt.Sprintf("Failed to start Claude: %v", err), alert.AlertTypeError)()
 		}
 
-		// Write PrepStarting status
-		util.WriteStatusLog(workitem.Id, "Starting", util.AiMuxDir)
-		workitem.Status = "Starting" // Also set here so that the UI can update immediately
-		
 		return nil
 	}
 }
@@ -51,10 +47,10 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 		if !util.InTmuxSession() {
 			sessionName = "ai-mux"
 		}
-		
+
 		// Check if work item has been started
 		isStarted := workitem.Status != "created" && workitem.Status != ""
-		
+
 		if isStarted {
 			// Get worktree path
 			cwd, err := os.Getwd()
@@ -63,7 +59,7 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 			}
 			mainFolderName := filepath.Base(cwd)
 			worktreePath := filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName), workitem.BranchName)
-			
+
 			// Check if worktree is clean and tell claude to commit if needed
 			if clean, err := util.IsWorktreeClean(worktreePath); err == nil && !clean {
 				err := util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "commit the changes")
@@ -71,28 +67,24 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 					return alert.Alert("Failed to commit changes: "+err.Error(), alert.AlertTypeError)()
 				}
 				util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "C-m") // Have to send a carriage return by itself for claude
-				workitem.IsClosing = true // Indicator so that when claude is done we will try the CloseSession again
-				
-				// Write PrepForClosing status
-				util.WriteStatusLog(workitem.Id, "PrepForClosing", util.AiMuxDir)
-				workitem.Status = "PrepForClosing" // Also set here so that the UI can update immediately
-				
+				workitem.IsClosing = true                                            // Indicator so that when claude is done we will try the CloseSession again
+
 				return nil // Need to wait for claude to finish commiting
 			}
-			
+
 			// Remove tmux window
 			util.KillTmuxWindow(workitem.BranchName, sessionName)
-			
+
 			// Remove git worktree
 			util.RemoveWorktree(worktreePath)
 		}
-		
+
 		// Always remove work item data at the end
 		workItemDir := filepath.Join(util.AiMuxDir, workitem.Id)
 		if err := os.RemoveAll(workItemDir); err != nil {
 			return alert.Alert("Failed to remove work item data: "+err.Error(), alert.AlertTypeError)()
 		}
-		
+
 		return data.WorkItemRemovedMsg{
 			WorkItem: workitem,
 		}
@@ -125,28 +117,28 @@ func startClaudeInWindow(workitem *data.WorkItem) error {
 		return fmt.Errorf("failed to get current directory: %w", err)
 	}
 	mainFolderName := filepath.Base(cwd)
-	
+
 	// Build the path to the ai-mux directory in the main tree
 	// From worktree at ../mainFolder-worktrees/branchName to ../mainFolder/.ai-mux
 	aiMuxDirPath := filepath.Join("..", "..", mainFolderName, ".ai-mux")
 	settingsPath := filepath.Join(aiMuxDirPath, "claude-settings.json")
-	
+
 	// Determine permission mode
 	permissionMode := "acceptEdits"
 	if workitem.PlanMode {
 		permissionMode = "plan"
 	}
-	
+
 	// Build the claude command with initial prompt and AI_MUX_DIR environment variable
 	claudeCmd := fmt.Sprintf("AI_MUX_DIR=%s claude --session-id %s --settings %s --permission-mode %s %s",
 		aiMuxDirPath, workitem.Id, settingsPath, permissionMode, util.ShellQuote(workitem.Description))
-	
+
 	// Determine the session name based on tmux context
 	sessionName := ""
 	if !util.InTmuxSession() {
 		sessionName = "ai-mux"
 	}
-	
+
 	// Run the command in the tmux window
 	err = util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, claudeCmd)
 
@@ -156,4 +148,3 @@ func startClaudeInWindow(workitem *data.WorkItem) error {
 	util.RunCommandInTmuxWindow(workitem.BranchName, sessionName, "Enter")
 	return err
 }
-

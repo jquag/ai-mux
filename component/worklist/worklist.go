@@ -18,6 +18,7 @@ import (
 	"github.com/jquag/ai-mux/service"
 	"github.com/jquag/ai-mux/theme"
 	"github.com/jquag/ai-mux/util"
+	"slices"
 )
 
 type Model struct {
@@ -71,9 +72,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		m.updateStatus(msg.item, msg.status)
 		if msg.item.IsClosing && msg.status == "Stop" {
 			//finished preping for close
-			return m, tea.Batch(m.closeSelected(), calcStatus(msg.item, 3))
+			return m, tea.Batch(m.closeSelected(), calcStatus(msg.item, 3, false))
 		}
-		return m, calcStatus(msg.item, 3)
+		return m, calcStatus(msg.item, 3, false)
 	}
 
 	return m, nil
@@ -270,7 +271,7 @@ func (m *Model) startStatusPollers() tea.Cmd {
 
 func (m *Model) startStatusPoller(item *data.WorkItem) tea.Cmd {
 	// Start a poller for the specific item
-	return calcStatus(item, 0)
+	return calcStatus(item, 0, false)
 }
 
 func (m *Model) updateStatus(item *data.WorkItem, status string) {
@@ -287,7 +288,11 @@ func (m *Model) startSelected() tea.Cmd {
 	if selected == nil || (selected.Status != "created" && selected.Status != "") {
 		return alert.Alert("This work item has alredy been started.", alert.AlertTypeWarning)
 	}
-	return service.StartSession(selected)
+
+	// Write PrepStarting status
+	util.WriteStatusLog(selected.Id, "Starting", util.AiMuxDir)
+
+	return tea.Batch(calcStatus(selected, 0, true), service.StartSession(selected))
 }
 
 func (m *Model) closeSelected() tea.Cmd {
@@ -295,7 +300,11 @@ func (m *Model) closeSelected() tea.Cmd {
 	if selected == nil {
 		return nil
 	}
-	return service.CloseSession(selected)
+
+	// Write PrepStarting status
+	util.WriteStatusLog(selected.Id, "PrepForClosing", util.AiMuxDir)
+
+	return tea.Batch(calcStatus(selected, 0, true), service.CloseSession(selected))
 }
 
 func (m *Model) getSelected() *data.WorkItem {
@@ -308,7 +317,7 @@ func (m *Model) getSelected() *data.WorkItem {
 func (m *Model) removeWorkItem(id string) {
 	for i, item := range m.workItems {
 		if item.Id == id {
-			m.workItems = append(m.workItems[:i], m.workItems[i+1:]...)
+			m.workItems = slices.Delete(m.workItems, i, i+1)
 			// Adjust selected index if necessary
 			if m.selectedIndex >= len(m.workItems) && len(m.workItems) > 0 {
 				m.selectedIndex = len(m.workItems) - 1
@@ -329,11 +338,12 @@ func New(width, height int) *Model {
 }
 
 type statusUpdateMsg struct {
-	item   *data.WorkItem
-	status string
+	item    *data.WorkItem
+	status  string
+	oneTime bool
 }
 
-func calcStatus(item *data.WorkItem, wait int) tea.Cmd {
+func calcStatus(item *data.WorkItem, wait int, oneTime bool) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(time.Duration(wait) * time.Second)
 
@@ -343,6 +353,7 @@ func calcStatus(item *data.WorkItem, wait int) tea.Cmd {
 		return statusUpdateMsg{
 			item:   item,
 			status: status,
+			oneTime: oneTime,
 		}
 	}
 }
