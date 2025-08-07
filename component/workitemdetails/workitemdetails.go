@@ -67,10 +67,13 @@ func (m *Model) buildContent() string {
 	sections = append(sections, descStyle.Render(m.workItem.Description))
 	sections = append(sections, "")
 
+	sections = append(sections, nameStyle.Render("Plan Mode"))
+	sections = append(sections, valueStyle.Render(fmt.Sprintf("%v", m.workItem.PlanMode)))
+	sections = append(sections, "")
+
 	isStarted := m.workItem.Status != "created" && m.workItem.Status != ""
 	
 	if isStarted {
-		sections = append(sections, "")
 		sections = append(sections, nameStyle.Render("Session Information"))
 		
 		safeName := util.ToSafeName(m.workItem.ShortName)
@@ -104,6 +107,6 @@ func (m *Model) WithWidth(width int) modal.ModalContent {
 
 func (m *Model) WithHeight(height int) modal.ModalContent {
 	m.height = height
-	m.viewport.Height = height
+	m.viewport.Height = height - 4
 	return m
 }
