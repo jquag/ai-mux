@@ -14,6 +14,7 @@ import (
 	"github.com/jquag/ai-mux/component/alert"
 	"github.com/jquag/ai-mux/component/modal"
 	"github.com/jquag/ai-mux/component/workform"
+	"github.com/jquag/ai-mux/component/workitemdetails"
 	"github.com/jquag/ai-mux/data"
 	"github.com/jquag/ai-mux/service"
 	"github.com/jquag/ai-mux/theme"
@@ -51,6 +52,12 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		case "k", "up":
 			if m.selectedIndex > 0 {
 				m.selectedIndex--
+			}
+		case "enter":
+			selected := m.getSelected()
+			if selected != nil {
+				details := workitemdetails.New(selected)
+				return m, modal.ShowModal(details, "Work Item Details")
 			}
 		case "s":
 			return m, m.startSelected()
