@@ -56,6 +56,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, m.startSelected()
 		case "c":
 			return m, m.closeSelected()
+		case "o":
+			return m, m.openSelected()
 		}
 	case data.NewWorkItemMsg:
 		m.workItems = append(m.workItems, msg.WorkItem)
@@ -305,6 +307,31 @@ func (m *Model) closeSelected() tea.Cmd {
 	util.WriteStatusLog(selected.Id, "PrepForClosing", util.AiMuxDir)
 
 	return tea.Batch(calcStatus(selected, 0, true), service.CloseSession(selected))
+}
+
+func (m *Model) openSelected() tea.Cmd {
+	selected := m.getSelected()
+	if selected == nil {
+		return alert.Alert("No work item selected", alert.AlertTypeWarning)
+	}
+
+	// Check if work item has been started (has a tmux window)
+	if selected.Status == "created" || selected.Status == "" {
+		return alert.Alert("Work item not started - no tmux window to switch to", alert.AlertTypeWarning)
+	}
+
+	// Determine session name (same logic as in service.go)
+	sessionName := ""
+	if !util.InTmuxSession() {
+		sessionName = "ai-mux"
+	}
+
+	// Switch to the tmux window
+	if err := util.SwitchToTmuxWindow(selected.BranchName, sessionName); err != nil {
+		return alert.Alert(fmt.Sprintf("Failed to switch to tmux window: %v", err), alert.AlertTypeError)
+	}
+
+	return alert.Alert(fmt.Sprintf("Switched to tmux window '%s'", selected.BranchName), alert.AlertTypeInfo)
 }
 
 func (m *Model) getSelected() *data.WorkItem {

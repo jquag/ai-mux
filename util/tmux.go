@@ -117,6 +117,18 @@ func FindPaneByVariable(windowName string, sessionName string, variable string, 
 	return "", fmt.Errorf("no pane found with %s=%s in window %s", variable, value, target)
 }
 
+// SwitchToTmuxWindow switches focus to a specific tmux window
+func SwitchToTmuxWindow(windowName string, sessionName string) error {
+	target := windowName
+	if sessionName != "" {
+		target = sessionName + ":" + windowName
+	}
+	
+	// Switch to the tmux window
+	cmd := exec.Command("tmux", "select-window", "-t", target)
+	return cmd.Run()
+}
+
 // KillTmuxWindow kills a specific tmux window
 func KillTmuxWindow(windowName string, sessionName string) error {
 	target := windowName
