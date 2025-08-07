@@ -8,7 +8,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jquag/ai-mux/component/alert"
-	"github.com/jquag/ai-mux/component/startinfo"
 	data "github.com/jquag/ai-mux/data"
 	"github.com/jquag/ai-mux/util"
 )
@@ -23,36 +22,25 @@ type StartSessionMsg struct {
 
 func StartSession(workitem *data.WorkItem) tea.Cmd {
 	return func() tea.Msg {
-		worktreePath, newBranch, err := util.CreateWorktree(workitem.BranchName)
+		worktreePath, err := util.CreateWorktree(workitem.BranchName)
 		if err != nil {
-			return startinfo.Alert(startinfo.Model{
-				Error: err,
-			})
+			return alert.Alert(fmt.Sprintf("Failed to create worktree: %v", err), alert.AlertTypeError)()
 		}
 		
-		info := setupTmuxWindow(workitem, worktreePath)
-		if info.Error != nil {
-			return startinfo.Alert(info)
-		}
-		
-		info.WorktreeFolderMessage = worktreePath
-		if newBranch {
-			info.GitBranchMessage = fmt.Sprintf("%s (new)", workitem.BranchName)
-		} else {
-			info.GitBranchMessage = workitem.BranchName
+		if err := setupTmuxWindow(workitem, worktreePath); err != nil {
+			return alert.Alert(err.Error(), alert.AlertTypeError)()
 		}
 		
 		// Start Claude Code in the tmux window
-		if err := startClaudeInWindow(workitem, info); err != nil {
-			info.Error = err
-			return startinfo.Alert(info)
+		if err := startClaudeInWindow(workitem); err != nil {
+			return alert.Alert(fmt.Sprintf("Failed to start Claude: %v", err), alert.AlertTypeError)()
 		}
 
 		// Write PrepStarting status
 		util.WriteStatusLog(workitem.Id, "Starting", util.AiMuxDir)
 		workitem.Status = "Starting" // Also set here so that the UI can update immediately
 		
-		return startinfo.Alert(info)
+		return nil
 	}
 }
 
@@ -111,48 +99,26 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 	}
 }
 
-func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) startinfo.Model {
-		if util.InTmuxSession() {
-			// Create window in current session
-			if err := util.CreateTmuxWindow(workitem.BranchName, "", worktreePath); err != nil {
-				return startinfo.Model{
-					Error: fmt.Errorf("failed to create tmux window: %w", err),
-				}
-			}
-			return startinfo.Model{
-				TmuxSessionMessage:    "(current)",
-				TmuxWindowMessage:     fmt.Sprintf("%s (new)", workitem.BranchName),
-				WorktreeFolderMessage: "",
-				GitBranchMessage:      "",
-			}
-		} else {
-			// Ensure ai-mux session exists
-			if created, err := util.EnsureTmuxSession("ai-mux"); err != nil {
-				return startinfo.Model{
-					Error: fmt.Errorf("failed to create tmux session 'ai-mux': %w", err),
-				}
-			} else {
-				// Create window in ai-mux session
-				if err := util.CreateTmuxWindow(workitem.BranchName, "ai-mux", worktreePath); err != nil {
-					return startinfo.Model{
-						Error: fmt.Errorf("failed to create tmux window in ai-mux session: %w", err),
-					}
-				}
-				sessionMsg := "ai-mux"
-				if created {
-					sessionMsg += " (new)"
-				}
-				return startinfo.Model{
-					TmuxSessionMessage:    sessionMsg,
-					TmuxWindowMessage:     fmt.Sprintf("%s (new)", workitem.BranchName),
-					WorktreeFolderMessage: "",
-					GitBranchMessage:      "",
-				}
-			}
+func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
+	if util.InTmuxSession() {
+		// Create window in current session
+		if err := util.CreateTmuxWindow(workitem.BranchName, "", worktreePath); err != nil {
+			return fmt.Errorf("failed to create tmux window: %w", err)
 		}
+	} else {
+		// Ensure ai-mux session exists
+		if _, err := util.EnsureTmuxSession("ai-mux"); err != nil {
+			return fmt.Errorf("failed to create tmux session 'ai-mux': %w", err)
+		}
+		// Create window in ai-mux session
+		if err := util.CreateTmuxWindow(workitem.BranchName, "ai-mux", worktreePath); err != nil {
+			return fmt.Errorf("failed to create tmux window in ai-mux session: %w", err)
+		}
+	}
+	return nil
 }
 
-func startClaudeInWindow(workitem *data.WorkItem, info startinfo.Model) error {
+func startClaudeInWindow(workitem *data.WorkItem) error {
 	// Get the current directory name (main folder)
 	cwd, err := os.Getwd()
 	if err != nil {
