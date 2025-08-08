@@ -13,7 +13,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "go run . --event"
+            "command": "aimux --event"
           }
         ]
       }
@@ -23,7 +23,7 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "go run . --event"
+						"command": "aimux --event"
 					}
 				]
 			}
@@ -33,7 +33,7 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "go run . --event"
+						"command": "aimux --event"
 					}
 				]
 			}
@@ -44,7 +44,7 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "go run . --event"
+						"command": "aimux --event"
 					}
 				]
 			}
@@ -55,7 +55,7 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "go run . --event"
+						"command": "aimux --event"
 					}
 				]
 			}
