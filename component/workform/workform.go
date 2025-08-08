@@ -21,7 +21,6 @@ type Model struct {
 	height    int
 
 	shortName    string
-	planMode bool
 	description   string
 }
 
@@ -80,9 +79,6 @@ func New() Model {
 			huh.NewText().
 				Key("description").
 				Title("Description"),
-			huh.NewConfirm().
-				Key("startWithPlan").
-				Title("Use plan mode"),
 		),
 	).WithWidth(0).WithHeight(0)
 
@@ -95,7 +91,6 @@ func (m Model) submitCmd() tea.Cmd {
 		Id:          uuid.New().String(),
 		ShortName:  m.form.GetString("shortName"),
 		Description: m.form.GetString("description"),
-		PlanMode:    m.form.GetBool("startWithPlan"),
 	}
 
 	// Save the work item to file

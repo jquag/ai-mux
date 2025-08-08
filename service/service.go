@@ -20,7 +20,7 @@ type StartSessionMsg struct {
 	Error                 error
 }
 
-func StartSession(workitem *data.WorkItem) tea.Cmd {
+func StartSession(workitem *data.WorkItem, planMode bool) tea.Cmd {
 	return func() tea.Msg {
 		safeName := util.ToSafeName(workitem.ShortName)
 		worktreePath, err := util.CreateWorktree(safeName)
@@ -33,7 +33,7 @@ func StartSession(workitem *data.WorkItem) tea.Cmd {
 		}
 
 		// Start Claude Code in the tmux window
-		if err := startClaudeInWindow(workitem); err != nil {
+		if err := startClaudeInWindow(workitem, planMode); err != nil {
 			return alert.Alert(fmt.Sprintf("Failed to start Claude: %v", err), alert.AlertTypeError)()
 		}
 
@@ -142,7 +142,7 @@ func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
 	return nil
 }
 
-func startClaudeInWindow(workitem *data.WorkItem) error {
+func startClaudeInWindow(workitem *data.WorkItem, planMode bool) error {
 	// Get the current directory name (main folder)
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -157,7 +157,7 @@ func startClaudeInWindow(workitem *data.WorkItem) error {
 
 	// Determine permission mode
 	permissionMode := "acceptEdits"
-	if workitem.PlanMode {
+	if planMode {
 		permissionMode = "plan"
 	}
 

@@ -67,10 +67,6 @@ func (m *Model) buildContent() string {
 	sections = append(sections, descStyle.Render(m.workItem.Description))
 	sections = append(sections, "")
 
-	sections = append(sections, nameStyle.Render("Plan Mode"))
-	sections = append(sections, valueStyle.Render(fmt.Sprintf("%v", m.workItem.PlanMode)))
-	sections = append(sections, "")
-
 	isStarted := m.workItem.Status != "created" && m.workItem.Status != ""
 	
 	if isStarted {

@@ -60,7 +60,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 				return m, modal.ShowModal(details, "Work Item Details")
 			}
 		case "s":
-			return m, m.startSelected()
+			return m, m.startSelected(false)
+		case "p":
+			return m, m.startSelected(true)
 		case "c":
 			return m, m.closeSelected()
 		case "o":
@@ -216,11 +218,7 @@ func (m *Model) statusView(item *data.WorkItem, selected bool) string {
 	case "Stop":
 		status = "Done"
 	case "", "created":
-		if item.PlanMode {
-			status = "Plan Not Started"
-		} else {
-			status = "Not Started"
-		}
+		status = "Not Started"
 	case "PrepForClosing":
 		status = "Closing..."
 	default:
@@ -292,7 +290,7 @@ func (m *Model) updateStatus(item *data.WorkItem, status string) {
 	}
 }
 
-func (m *Model) startSelected() tea.Cmd {
+func (m *Model) startSelected(planMode bool) tea.Cmd {
 	selected := m.getSelected()
 	if selected == nil || (selected.Status != "created" && selected.Status != "") {
 		return alert.Alert("This work item has alredy been started.", alert.AlertTypeWarning)
@@ -301,7 +299,7 @@ func (m *Model) startSelected() tea.Cmd {
 	// Write PrepStarting status
 	util.WriteStatusLog(selected.Id, "Starting", util.AiMuxDir)
 
-	return tea.Batch(calcStatus(selected, 0, true), service.StartSession(selected))
+	return tea.Batch(calcStatus(selected, 0, true), service.StartSession(selected, planMode))
 }
 
 func (m *Model) closeSelected() tea.Cmd {
@@ -385,8 +383,8 @@ func calcStatus(item *data.WorkItem, wait int, oneTime bool) tea.Cmd {
 		status := readLastStatus(item.Id)
 
 		return statusUpdateMsg{
-			item:   item,
-			status: status,
+			item:    item,
+			status:  status,
 			oneTime: oneTime,
 		}
 	}

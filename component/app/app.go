@@ -41,7 +41,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		m.width = min(msg.Width, 100)
+		m.width = min(msg.Width, 150)
 		m.height = msg.Height
 		m.updateLayout()
 		return m, nil

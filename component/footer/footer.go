@@ -38,11 +38,14 @@ func (m Model) View() string {
 	}
 
 	views := []string{}
-	for _, mapping := range m.mappings {
-		v := fmt.Sprintf("%s: %s  ",
+	for i, mapping := range m.mappings {
+		v := fmt.Sprintf("%s:%s",
 			lipgloss.NewStyle().Foreground(labelColor).Render(mapping.label),
 			lipgloss.NewStyle().Foreground(keyColor).Render(mapping.key),
 		)
+		if i < len(m.mappings)-1 {
+			v += lipgloss.NewStyle().Foreground(theme.Colors.Muted).Render(" | ")
+		}
 		views = append(views, v)
 	}
 	style := lipgloss.NewStyle().
@@ -67,9 +70,11 @@ func New() Model {
 		{"Quit", "q"},
 		{"Add", "a"},
 		{"Close", "c"},
-		{"(Re)Start", "s"},
+		{"Plan", "p"},
+		{"Vibe", "v"},
+		{"Start", "s"},
 		{"Open", "o"},
-		{"Info", "enter"},
+		{"Info", "<cr>"},
 	}
 
 	return Model{

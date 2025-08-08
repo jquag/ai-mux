@@ -4,7 +4,6 @@ type WorkItem struct {
 	Id          string
 	ShortName   string
 	Description string
-	PlanMode    bool
 	Status      string
 	IsClosing   bool
 }
