@@ -20,7 +20,7 @@ type StartSessionMsg struct {
 	Error                 error
 }
 
-func StartSession(workitem *data.WorkItem, planMode bool) tea.Cmd {
+func StartSession(workitem *data.WorkItem, mode string) tea.Cmd {
 	return func() tea.Msg {
 		safeName := util.ToSafeName(workitem.ShortName)
 		worktreePath, err := util.CreateWorktree(safeName)
@@ -33,7 +33,7 @@ func StartSession(workitem *data.WorkItem, planMode bool) tea.Cmd {
 		}
 
 		// Start Claude Code in the tmux window
-		if err := startClaudeInWindow(workitem, planMode); err != nil {
+		if err := startClaudeInWindow(workitem, mode); err != nil {
 			return alert.Alert(fmt.Sprintf("Failed to start Claude: %v", err), alert.AlertTypeError)()
 		}
 
@@ -129,7 +129,7 @@ func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
 	}
 	
 	// Find the bottom pane (the newly created one) and set custom variables for identification
-	// The new pane should be .1 (bottom pane)
+	// The new pane should be .1 (bottom panemode
 	target := safeName
 	if sessionName != "" {
 		target = sessionName + ":" + safeName
@@ -142,7 +142,7 @@ func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
 	return nil
 }
 
-func startClaudeInWindow(workitem *data.WorkItem, planMode bool) error {
+func startClaudeInWindow(workitem *data.WorkItem, mode string) error {
 	// Get the current directory name (main folder)
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -155,15 +155,9 @@ func startClaudeInWindow(workitem *data.WorkItem, planMode bool) error {
 	aiMuxDirPath := filepath.Join("..", "..", mainFolderName, ".ai-mux")
 	settingsPath := filepath.Join(aiMuxDirPath, "claude-settings.json")
 
-	// Determine permission mode
-	permissionMode := "acceptEdits"
-	if planMode {
-		permissionMode = "plan"
-	}
-
 	// Build the claude command with initial prompt and AI_MUX_DIR environment variable
 	claudeCmd := fmt.Sprintf("AI_MUX_DIR=%s claude --session-id %s --settings %s --permission-mode %s %s",
-		aiMuxDirPath, workitem.Id, settingsPath, permissionMode, util.ShellQuote(workitem.Description))
+		aiMuxDirPath, workitem.Id, settingsPath, mode, util.ShellQuote(workitem.Description))
 
 	// Determine session name
 	sessionName := ""
