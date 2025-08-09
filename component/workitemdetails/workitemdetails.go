@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -64,7 +63,7 @@ func (m *Model) buildContent() string {
 	sections = append(sections, "")
 
 	sections = append(sections, nameStyle.Render("Description"))
-	sections = append(sections, descStyle.Render(m.workItem.Description))
+	sections = append(sections, descStyle.Width(m.width).MaxWidth(m.width).Render(m.workItem.Description))
 	sections = append(sections, "")
 
 	isStarted := m.workItem.Status != "created" && m.workItem.Status != ""
@@ -106,7 +105,7 @@ func (m *Model) buildContent() string {
 		}
 	}
 
-	return strings.Join(sections, "\n")
+	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }
 
 func (m *Model) ShouldCloseOnEscape() bool {
