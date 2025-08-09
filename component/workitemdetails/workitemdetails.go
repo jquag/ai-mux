@@ -74,18 +74,36 @@ func (m *Model) buildContent() string {
 		
 		safeName := util.ToSafeName(m.workItem.ShortName)
 		
-		sections = append(sections, labelStyle.Render("  Tmux Window: ") + valueStyle.Render(safeName))
+		sections = append(sections, labelStyle.Render("Tmux Window: ") + valueStyle.Render(safeName))
 		
-		sections = append(sections, labelStyle.Render("  Git Branch: ") + valueStyle.Render(safeName))
+		sections = append(sections, labelStyle.Render("Git Branch: ") + valueStyle.Render(safeName))
 		
 		cwd, err := os.Getwd()
+		var worktreePath string
 		if err == nil {
 			mainFolderName := filepath.Base(cwd)
-			worktreePath := filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName), safeName)
-			sections = append(sections, labelStyle.Render("  Worktree Folder: ") + valueStyle.Render(worktreePath))
+			worktreePath = filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName), safeName)
+			sections = append(sections, labelStyle.Render("Worktree Folder: ") + valueStyle.Render(worktreePath))
 		}
 		
-		sections = append(sections, labelStyle.Render("  Claude Session ID: ") + valueStyle.Render(m.workItem.Id))
+		sections = append(sections, labelStyle.Render("Claude Session ID: ") + valueStyle.Render(m.workItem.Id))
+		
+		// Add git diff section
+		if worktreePath != "" {
+			sections = append(sections, "")
+			sections = append(sections, nameStyle.
+				Width(m.width).
+				Border(lipgloss.NormalBorder(), false, false, true, false).BorderForeground(theme.Colors.Muted).
+				Render("Git Diff"))
+			
+			diff, err := util.GetColoredGitDiff(worktreePath)
+			if err != nil {
+				sections = append(sections, descStyle.Render(fmt.Sprintf("Error getting diff: %v", err)))
+			} else {
+				// The diff already contains ANSI color codes, so we append it directly
+				sections = append(sections, diff)
+			}
+		}
 	}
 
 	return strings.Join(sections, "\n")

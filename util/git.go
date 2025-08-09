@@ -72,3 +72,26 @@ func IsWorktreeClean(worktreePath string) (bool, error) {
 	// If output is empty, the worktree is clean
 	return len(output) == 0, nil
 }
+
+// GetColoredGitDiff returns the git diff with ANSI color codes
+func GetColoredGitDiff(worktreePath string) (string, error) {
+	// Use git diff with color=always to force color output
+	// Include both staged and unstaged changes
+	cmd := exec.Command("git", "-C", worktreePath, "diff", "HEAD", "--color=always")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// If there's an error but output exists, it might still be useful
+		// (e.g., when there are no changes)
+		if len(output) > 0 {
+			return string(output), nil
+		}
+		return "", fmt.Errorf("failed to get git diff: %w", err)
+	}
+	
+	// If there's no diff, return a message
+	if len(output) == 0 {
+		return "No changes in worktree", nil
+	}
+	
+	return string(output), nil
+}
