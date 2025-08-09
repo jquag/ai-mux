@@ -73,6 +73,7 @@ func New() Model {
 		{"Plan", "p"},
 		{"Vibe", "v"},
 		{"Start", "s"},
+		{"Resume", "r"},
 		{"Open", "o"},
 		{"Info", "<cr>"},
 	}
