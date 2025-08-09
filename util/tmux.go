@@ -30,6 +30,18 @@ func EnsureTmuxSession(sessionName string) (bool, error) {
 	return false, nil
 }
 
+// WindowExists checks if a tmux window exists
+func WindowExists(windowName string, sessionName string) bool {
+	target := windowName
+	if sessionName != "" {
+		target = sessionName + ":" + windowName
+	}
+	
+	cmd := exec.Command("tmux", "list-windows", "-t", target, "-F", "#{window_name}")
+	err := cmd.Run()
+	return err == nil
+}
+
 // CreateTmuxWindow creates a new tmux window in the specified session or current session
 // If workingDir is provided, the window will start in that directory
 func CreateTmuxWindow(windowName string, sessionName string, workingDir string) error {

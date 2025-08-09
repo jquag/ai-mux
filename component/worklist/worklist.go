@@ -65,6 +65,8 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, m.startSelected("plan")
 		case "v":
 			return m, m.startSelected("acceptEdits")
+		case "r":
+			return m, m.resumeSelected()
 		case "c":
 			return m, m.closeSelected()
 		case "o":
@@ -302,6 +304,23 @@ func (m *Model) startSelected(mode string) tea.Cmd {
 	util.WriteStatusLog(selected.Id, "Starting", util.AiMuxDir)
 
 	return tea.Batch(calcStatus(selected, 0, true), service.StartSession(selected, mode))
+}
+
+func (m *Model) resumeSelected() tea.Cmd {
+	selected := m.getSelected()
+	if selected == nil {
+		return alert.Alert("No work item selected.", alert.AlertTypeWarning)
+	}
+	
+	// Check if item has been started (has a session to resume)
+	if selected.Status == "created" || selected.Status == "" {
+		return alert.Alert("This work item has not been started yet.", alert.AlertTypeWarning)
+	}
+	
+	// Write Notification status to indicate waiting for user
+	util.WriteStatusLog(selected.Id, "Notification", util.AiMuxDir)
+	
+	return tea.Batch(calcStatus(selected, 0, true), service.ResumeSession(selected))
 }
 
 func (m *Model) closeSelected() tea.Cmd {

@@ -41,6 +41,31 @@ func StartSession(workitem *data.WorkItem, mode string) tea.Cmd {
 	}
 }
 
+func ResumeSession(workitem *data.WorkItem) tea.Cmd {
+	return func() tea.Msg {
+		// Get worktree path
+		cwd, err := os.Getwd()
+		if err != nil {
+			return alert.Alert(fmt.Sprintf("Failed to get current directory: %v", err), alert.AlertTypeError)()
+		}
+		mainFolderName := filepath.Base(cwd)
+		safeName := util.ToSafeName(workitem.ShortName)
+		worktreePath := filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName), safeName)
+		
+		// Ensure tmux window and panes are set up (will reuse existing if present)
+		if err := setupTmuxWindow(workitem, worktreePath); err != nil {
+			return alert.Alert(fmt.Sprintf("Failed to setup tmux window: %v", err), alert.AlertTypeError)()
+		}
+		
+		// Resume Claude Code in the tmux window
+		if err := startClaudeInWindow(workitem, "resume"); err != nil {
+			return alert.Alert(fmt.Sprintf("Failed to resume Claude: %v", err), alert.AlertTypeError)()
+		}
+		
+		return nil
+	}
+}
+
 func CloseSession(workitem *data.WorkItem) tea.Cmd {
 	return func() tea.Msg {
 		// Calculate session name once
@@ -108,36 +133,46 @@ func setupTmuxWindow(workitem *data.WorkItem, worktreePath string) error {
 		}
 	}
 	
-	// Create window
 	safeName := util.ToSafeName(workitem.ShortName)
-	if err := util.CreateTmuxWindow(safeName, sessionName, worktreePath); err != nil {
-		return fmt.Errorf("failed to create tmux window: %w", err)
+	
+	// Check if window already exists
+	windowExists := util.WindowExists(safeName, sessionName)
+	
+	if !windowExists {
+		// Create window if it doesn't exist
+		if err := util.CreateTmuxWindow(safeName, sessionName, worktreePath); err != nil {
+			return fmt.Errorf("failed to create tmux window: %w", err)
+		}
+		
+		// Start editor in the top pane (original pane)
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			editor = "vim" // Default fallback
+		}
+		if err := util.RunCommandInTmuxWindow(safeName, sessionName, editor); err != nil {
+			return fmt.Errorf("failed to start editor: %w", err)
+		}
 	}
 	
-	// Start editor in the top pane (original pane)
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = "vim" // Default fallback
-	}
-	if err := util.RunCommandInTmuxWindow(safeName, sessionName, editor); err != nil {
-		return fmt.Errorf("failed to start editor: %w", err)
-	}
+	// Check if Claude pane exists
+	_, claudePaneErr := util.FindPaneByVariable(safeName, sessionName, "role", "claude-ai")
 	
-	// Create vertical split
-	if err := util.SplitTmuxWindow(safeName, sessionName, worktreePath); err != nil {
-		return fmt.Errorf("failed to split tmux window: %w", err)
+	if claudePaneErr != nil {
+		// Claude pane doesn't exist, create the split
+		if err := util.SplitTmuxWindow(safeName, sessionName, worktreePath); err != nil {
+			return fmt.Errorf("failed to split tmux window: %w", err)
+		}
+		
+		// Set custom variables for the bottom pane
+		target := safeName
+		if sessionName != "" {
+			target = sessionName + ":" + safeName
+		}
+		bottomPane := target + ".{bottom}"
+		
+		util.SetPaneVariable(bottomPane, "role", "claude-ai")
+		util.SetPaneVariable(bottomPane, "workitem-id", workitem.Id)
 	}
-	
-	// Find the bottom pane (the newly created one) and set custom variables for identification
-	// The new pane should be .1 (bottom panemode
-	target := safeName
-	if sessionName != "" {
-		target = sessionName + ":" + safeName
-	}
-	bottomPane := target + ".{bottom}"
-	
-	util.SetPaneVariable(bottomPane, "role", "claude-ai")
-	util.SetPaneVariable(bottomPane, "workitem-id", workitem.Id)
 	
 	return nil
 }
@@ -155,9 +190,17 @@ func startClaudeInWindow(workitem *data.WorkItem, mode string) error {
 	aiMuxDirPath := filepath.Join("..", "..", mainFolderName, ".ai-mux")
 	settingsPath := filepath.Join(aiMuxDirPath, "claude-settings.json")
 
-	// Build the claude command with initial prompt and AI_MUX_DIR environment variable
-	claudeCmd := fmt.Sprintf("AI_MUX_DIR=%s claude --session-id %s --settings %s --permission-mode %s %s",
-		aiMuxDirPath, workitem.Id, settingsPath, mode, util.ShellQuote(workitem.Description))
+	// Build the claude command based on mode
+	var claudeCmd string
+	if mode == "resume" {
+		// For resume, use --resume instead of --session-id and don't pass the prompt
+		claudeCmd = fmt.Sprintf("AI_MUX_DIR=%s claude --resume %s --settings %s",
+			aiMuxDirPath, workitem.Id, settingsPath)
+	} else {
+		// For start modes (default, plan, acceptEdits), use --session-id and pass the prompt
+		claudeCmd = fmt.Sprintf("AI_MUX_DIR=%s claude --session-id %s --settings %s --permission-mode %s %s",
+			aiMuxDirPath, workitem.Id, settingsPath, mode, util.ShellQuote(workitem.Description))
+	}
 
 	// Determine session name
 	sessionName := ""
@@ -175,9 +218,11 @@ func startClaudeInWindow(workitem *data.WorkItem, mode string) error {
 	// Run the command in the Claude pane
 	err = util.RunCommandInTmuxPane(claudePaneId, claudeCmd)
 
-	// Wait for claude to bring up the trust prompt then automatically accept it
+	// For non-resume modes, wait for claude to bring up the trust prompt then automatically accept it
 	// This is a hack but I didn't see any other way to do it and claude does not provide a notification when this prompt appears
-	time.Sleep(2 * time.Second)
-	util.RunCommandInTmuxPane(claudePaneId, "Enter")
+	if mode != "resume" {
+		time.Sleep(2 * time.Second)
+		util.RunCommandInTmuxPane(claudePaneId, "Enter")
+	}
 	return err
 }
