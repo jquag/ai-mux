@@ -138,7 +138,11 @@ func SwitchToTmuxWindow(windowName string, sessionName string) error {
 	
 	// Switch to the tmux window
 	cmd := exec.Command("tmux", "select-window", "-t", target)
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to switch to window '%s': %w - output: %s", target, err, string(output))
+	}
+	return nil
 }
 
 // KillTmuxWindow kills a specific tmux window

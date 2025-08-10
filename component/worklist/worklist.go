@@ -353,7 +353,7 @@ func (m *Model) openSelected() tea.Cmd {
 	}
 
 	// Switch to the tmux window
-	if err := util.SwitchToTmuxWindow(selected.ShortName, sessionName); err != nil {
+	if err := util.SwitchToTmuxWindow(util.ToSafeName(selected.ShortName), sessionName); err != nil {
 		return alert.Alert(fmt.Sprintf("Failed to switch to tmux window: %v", err), alert.AlertTypeError)
 	}
 
