@@ -86,6 +86,7 @@ func newWithItem(item *workitem.WorkItem) Model {
 	// Set initial values for editing
 	shortNameValue := ""
 	descriptionValue := ""
+	confirmValue := true // Default to Submit
 	if item != nil {
 		shortNameValue = item.ShortName
 		descriptionValue = item.Description
@@ -101,6 +102,11 @@ func newWithItem(item *workitem.WorkItem) Model {
 				Key("description").
 				Title("Description").
 				Value(&descriptionValue),
+			huh.NewConfirm().
+				Key("done").
+				Value(&confirmValue).
+				Affirmative("Submit (s)").
+				Negative("Cancel (c)"),
 		),
 	).WithWidth(0).WithHeight(0)
 
@@ -109,6 +115,12 @@ func newWithItem(item *workitem.WorkItem) Model {
 }
 
 func (m Model) submitCmd() tea.Cmd {
+	// Check if user clicked Cancel
+	if !m.form.GetBool("done") {
+		// User cancelled, just close the modal
+		return modal.CloseCmd
+	}
+	
 	var workItem *workitem.WorkItem
 	
 	if m.editMode && m.existingItem != nil {
