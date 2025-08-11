@@ -12,6 +12,10 @@ type NewWorkItemMsg struct {
 	WorkItem *WorkItem
 }
 
+type UpdateWorkItemMsg struct {
+	WorkItem *WorkItem
+}
+
 type WorkItemRemovedMsg struct {
 	WorkItem *WorkItem
 }

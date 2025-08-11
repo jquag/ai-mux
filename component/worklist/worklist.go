@@ -72,6 +72,13 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, m.closeSelected()
 		case "o":
 			return m, m.openSelected()
+		case "e":
+			selected := m.getSelected()
+			if selected != nil {
+				form := workform.NewForEdit(selected)
+				initCmd := form.Init()
+				return m, tea.Batch(initCmd, modal.ShowModal(form, "Edit Work Item"))
+			}
 		case "?":
 			help := help.New()
 			return m, modal.ShowModal(help, "Help - Key Bindings")
@@ -79,6 +86,18 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	case data.NewWorkItemMsg:
 		m.workItems = append(m.workItems, msg.WorkItem)
 		return m, m.startStatusPoller(msg.WorkItem)
+	case data.UpdateWorkItemMsg:
+		// Update the work item in the list
+		for i, item := range m.workItems {
+			if item.Id == msg.WorkItem.Id {
+				// Preserve the status and IsClosing fields from the existing item
+				msg.WorkItem.Status = item.Status
+				msg.WorkItem.IsClosing = item.IsClosing
+				m.workItems[i] = msg.WorkItem
+				break
+			}
+		}
+		return m, nil
 	case data.WorkItemRemovedMsg:
 		m.removeWorkItem(msg.WorkItem.Id)
 		return m, nil
