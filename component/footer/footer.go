@@ -30,7 +30,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	labelColor := theme.Colors.Text
 	keyColor := theme.Colors.Primary
-	borderColor := theme.Colors.Border
+	borderColor := theme.Colors.Muted
 	if m.overlayed {
 		labelColor = theme.Colors.Muted
 		keyColor = theme.Colors.Muted
@@ -39,7 +39,7 @@ func (m Model) View() string {
 
 	views := []string{}
 	for i, mapping := range m.mappings {
-		v := fmt.Sprintf("%s:%s",
+		v := fmt.Sprintf("%s: %s",
 			lipgloss.NewStyle().Foreground(labelColor).Render(mapping.label),
 			lipgloss.NewStyle().Foreground(keyColor).Render(mapping.key),
 		)
@@ -68,14 +68,15 @@ func (m Model) WithOverlayed(overlayed bool) Model {
 func New() Model {
 	mappings := []mapping{
 		{"Quit", "q"},
-		{"Add", "a"},
-		{"Close", "c"},
-		{"Plan", "p"},
-		{"Vibe", "v"},
-		{"Start", "s"},
-		{"Resume", "r"},
-		{"Open", "o"},
-		{"Info", "<cr>"},
+		{"Help", "?"},
+		// {"Add", "a"},
+		// {"Close", "c"},
+		// {"Plan", "p"},
+		// {"Vibe", "v"},
+		// {"Start", "s"},
+		// {"Resume", "r"},
+		// {"Open", "o"},
+		// {"Info", "<cr>"},
 	}
 
 	return Model{

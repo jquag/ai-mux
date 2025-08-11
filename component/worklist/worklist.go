@@ -97,7 +97,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 
 func (m *Model) View() string {
 	titleColor := theme.Colors.Primary
-	borderColor := theme.Colors.Border
+	borderColor := theme.Colors.Muted
 
 	if m.Overlayed {
 		titleColor = theme.Colors.Muted
