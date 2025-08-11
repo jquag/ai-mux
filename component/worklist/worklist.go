@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jquag/ai-mux/component/alert"
+	"github.com/jquag/ai-mux/component/help"
 	"github.com/jquag/ai-mux/component/modal"
 	"github.com/jquag/ai-mux/component/workform"
 	"github.com/jquag/ai-mux/component/workitemdetails"
@@ -71,6 +72,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, m.closeSelected()
 		case "o":
 			return m, m.openSelected()
+		case "?":
+			help := help.New()
+			return m, modal.ShowModal(help, "Help - Key Bindings")
 		}
 	case data.NewWorkItemMsg:
 		m.workItems = append(m.workItems, msg.WorkItem)
