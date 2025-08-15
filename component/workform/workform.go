@@ -67,19 +67,11 @@ func (m Model) ShouldCloseOnEscape() bool {
 	return true
 }
 
-func New() Model {
-	return newWithItem(nil)
-}
-
-func NewForEdit(item *workitem.WorkItem) Model {
-	return newWithItem(item)
-}
-
-func newWithItem(item *workitem.WorkItem) Model {
+func New(item *workitem.WorkItem) Model {
 	m := Model{
 		width:  0,
 		height: 0,
-		editMode: item != nil,
+		editMode: item != nil && item.Id != "",
 		existingItem: item,
 	}
 	
@@ -121,14 +113,11 @@ func (m Model) submitCmd() tea.Cmd {
 		return modal.CloseCmd
 	}
 	
-	var workItem *workitem.WorkItem
+	workItem := m.existingItem
+	workItem.ShortName = m.form.GetString("shortName")
+	workItem.Description = m.form.GetString("description")
 	
 	if m.editMode && m.existingItem != nil {
-		// Update existing work item
-		workItem = m.existingItem
-		workItem.ShortName = m.form.GetString("shortName")
-		workItem.Description = m.form.GetString("description")
-		
 		// Update the work item file
 		if err := updateWorkItem(workItem); err != nil {
 			fmt.Fprintf(os.Stderr, "Error updating work item: %v\n", err)
@@ -142,12 +131,7 @@ func (m Model) submitCmd() tea.Cmd {
 		}
 		return tea.Batch(modal.CloseCmd, updateWorkItemCmd)
 	} else {
-		// Create new work item
-		workItem = &workitem.WorkItem{
-			Id:          uuid.New().String(),
-			ShortName:  m.form.GetString("shortName"),
-			Description: m.form.GetString("description"),
-		}
+		workItem.Id = uuid.New().String()
 		
 		// Save the new work item to file
 		if err := saveWorkItem(workItem); err != nil {

@@ -4,6 +4,7 @@ type WorkItem struct {
 	Id          string
 	ShortName   string
 	Description string
+	Order       int
 	Status      string
 	IsClosing   bool
 }

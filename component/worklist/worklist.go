@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -43,7 +44,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "a":
-			form := workform.New()
+			form := workform.New(&data.WorkItem{Order: m.nextWorkItemOrder()})
 			initCmd := form.Init()
 			return m, tea.Batch(initCmd, modal.ShowModal(form, "Add Work Item"))
 		case "j", "down":
@@ -75,7 +76,7 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 		case "e":
 			selected := m.getSelected()
 			if selected != nil {
-				form := workform.NewForEdit(selected)
+				form := workform.New(selected)
 				initCmd := form.Init()
 				return m, tea.Batch(initCmd, modal.ShowModal(form, "Edit Work Item"))
 			}
@@ -405,6 +406,16 @@ func (m *Model) removeWorkItem(id string) {
 	}
 }
 
+func (m *Model) nextWorkItemOrder() int {
+	lastOrder := 0
+	for _, item := range m.workItems {
+		if item.Order > lastOrder {
+			lastOrder = item.Order
+		}
+	}
+	return lastOrder + 1
+}
+
 func New(width, height int) *Model {
 	return &Model{
 		width:    width,
@@ -489,8 +500,15 @@ func loadWorkItems() tea.Msg {
 
 		items = append(items, &item)
 	}
-
+	sortItems(items)
 	return loadItemsMsg{err: nil, items: items}
+}
+
+func sortItems(items []*data.WorkItem) {
+	// Sort items by Order field
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Order < items[j].Order
+	})
 }
 
 type loadItemsMsg struct {
