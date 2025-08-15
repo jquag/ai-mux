@@ -24,5 +24,7 @@ var Colors = ThemeColors{
 	Error:   lipgloss.Color("#eba0ac"),
 	Info:    lipgloss.Color("#81d1e0"),
 	// BgDark:  lipgloss.Color("#181825"),
-	BgDark:  lipgloss.Color("#3f3d3b"),
+	// BgDark:  lipgloss.Color("#3f3d3b"),
+	BgDark:  lipgloss.Color("#243b40"),
+
 }
