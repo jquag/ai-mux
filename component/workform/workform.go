@@ -1,10 +1,8 @@
 package workform
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
@@ -119,7 +117,7 @@ func (m Model) submitCmd() tea.Cmd {
 	
 	if m.editMode && m.existingItem != nil {
 		// Update the work item file
-		if err := updateWorkItem(workItem); err != nil {
+		if err := util.UpdateWorkItem(workItem); err != nil {
 			fmt.Fprintf(os.Stderr, "Error updating work item: %v\n", err)
 			os.Exit(1)
 		}
@@ -134,7 +132,7 @@ func (m Model) submitCmd() tea.Cmd {
 		workItem.Id = uuid.New().String()
 		
 		// Save the new work item to file
-		if err := saveWorkItem(workItem); err != nil {
+		if err := util.SaveWorkItem(workItem); err != nil {
 			fmt.Fprintf(os.Stderr, "Error saving work item: %v\n", err)
 			os.Exit(1)
 		}
@@ -148,47 +146,3 @@ func (m Model) submitCmd() tea.Cmd {
 	}
 }
 
-func saveWorkItem(item *workitem.WorkItem) error {
-	// Ensure .ai-mux directory exists
-	if err := util.EnsureAiMuxDir(); err != nil {
-		return err
-	}
-
-	// Create directory for this item using its UUID
-	itemDir := filepath.Join(util.AiMuxDir, item.Id)
-	if err := os.MkdirAll(itemDir, 0755); err != nil {
-		return fmt.Errorf("failed to create item directory: %w", err)
-	}
-
-	// Save item as JSON
-	itemPath := filepath.Join(itemDir, "item.json")
-	itemData, err := json.MarshalIndent(item, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal item: %w", err)
-	}
-	if err := os.WriteFile(itemPath, itemData, 0644); err != nil {
-		return fmt.Errorf("failed to write item.json: %w", err)
-	}
-
-	// Create state log with simple "created" entry
-	stateLogPath := filepath.Join(itemDir, "state-log.txt")
-	if err := os.WriteFile(stateLogPath, []byte("created\n"), 0644); err != nil {
-		return fmt.Errorf("failed to write state-log.txt: %w", err)
-	}
-
-	return nil
-}
-
-func updateWorkItem(item *workitem.WorkItem) error {
-	// Update the item.json file
-	itemPath := filepath.Join(util.AiMuxDir, item.Id, "item.json")
-	itemData, err := json.MarshalIndent(item, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal item: %w", err)
-	}
-	if err := os.WriteFile(itemPath, itemData, 0644); err != nil {
-		return fmt.Errorf("failed to write item.json: %w", err)
-	}
-	
-	return nil
-}

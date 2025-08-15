@@ -1,12 +1,14 @@
 package util
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/jquag/ai-mux/data"
 )
 
 func TitledBorderStyle(color lipgloss.Color, title string, width int) lipgloss.Style {
@@ -83,5 +85,52 @@ func WriteStatusLog(workItemId string, status string, aiMuxDir string) error {
 		return fmt.Errorf("failed to write to status log: %w", err)
 	}
 	
+	return nil
+}
+
+// UpdateWorkItem updates an existing work item's JSON file
+func UpdateWorkItem(item *data.WorkItem) error {
+	// Update the item.json file
+	itemPath := filepath.Join(AiMuxDir, item.Id, "item.json")
+	itemData, err := json.MarshalIndent(item, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal item: %w", err)
+	}
+	if err := os.WriteFile(itemPath, itemData, 0644); err != nil {
+		return fmt.Errorf("failed to write item.json: %w", err)
+	}
+	
+	return nil
+}
+
+// SaveWorkItem creates a new work item with its directory and files
+func SaveWorkItem(item *data.WorkItem) error {
+	// Ensure .ai-mux directory exists
+	if err := EnsureAiMuxDir(); err != nil {
+		return err
+	}
+
+	// Create directory for this item using its UUID
+	itemDir := filepath.Join(AiMuxDir, item.Id)
+	if err := os.MkdirAll(itemDir, 0755); err != nil {
+		return fmt.Errorf("failed to create item directory: %w", err)
+	}
+
+	// Save item as JSON
+	itemPath := filepath.Join(itemDir, "item.json")
+	itemData, err := json.MarshalIndent(item, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal item: %w", err)
+	}
+	if err := os.WriteFile(itemPath, itemData, 0644); err != nil {
+		return fmt.Errorf("failed to write item.json: %w", err)
+	}
+
+	// Create state log with simple "created" entry
+	stateLogPath := filepath.Join(itemDir, "state-log.txt")
+	if err := os.WriteFile(stateLogPath, []byte("created\n"), 0644); err != nil {
+		return fmt.Errorf("failed to write state-log.txt: %w", err)
+	}
+
 	return nil
 }

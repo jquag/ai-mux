@@ -55,6 +55,14 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			if m.selectedIndex > 0 {
 				m.selectedIndex--
 			}
+		case "ctrl+j":
+			if m.selectedIndex < len(m.workItems)-1 {
+				return m, m.moveItemDown(m.selectedIndex)
+			}
+		case "ctrl+k":
+			if m.selectedIndex > 0 {
+				return m, m.moveItemUp(m.selectedIndex)
+			}
 		case "enter":
 			selected := m.getSelected()
 			if selected != nil {
@@ -389,6 +397,76 @@ func (m *Model) getSelected() *data.WorkItem {
 		return m.workItems[m.selectedIndex]
 	}
 	return nil
+}
+
+func (m *Model) moveItemUp(index int) tea.Cmd {
+	if index <= 0 || index >= len(m.workItems) {
+		return nil
+	}
+	
+	// Swap the Order values
+	m.workItems[index].Order, m.workItems[index-1].Order = m.workItems[index-1].Order, m.workItems[index].Order
+	
+	// Create copies to save
+	item1 := *m.workItems[index]
+	item2 := *m.workItems[index-1]
+	
+	// Swap the items in the list
+	m.workItems[index], m.workItems[index-1] = m.workItems[index-1], m.workItems[index]
+	
+	// Move selection with the item
+	m.selectedIndex--
+	
+	// Save both items
+	return tea.Batch(
+		func() tea.Msg {
+			if err := util.UpdateWorkItem(&item1); err != nil {
+				return alert.Alert(fmt.Sprintf("Failed to save item: %v", err), alert.AlertTypeError)()
+			}
+			return data.UpdateWorkItemMsg{WorkItem: &item1}
+		},
+		func() tea.Msg {
+			if err := util.UpdateWorkItem(&item2); err != nil {
+				return alert.Alert(fmt.Sprintf("Failed to save item: %v", err), alert.AlertTypeError)()
+			}
+			return data.UpdateWorkItemMsg{WorkItem: &item2}
+		},
+	)
+}
+
+func (m *Model) moveItemDown(index int) tea.Cmd {
+	if index < 0 || index >= len(m.workItems)-1 {
+		return nil
+	}
+	
+	// Swap the Order values
+	m.workItems[index].Order, m.workItems[index+1].Order = m.workItems[index+1].Order, m.workItems[index].Order
+	
+	// Create copies to save
+	item1 := *m.workItems[index]
+	item2 := *m.workItems[index+1]
+	
+	// Swap the items in the list
+	m.workItems[index], m.workItems[index+1] = m.workItems[index+1], m.workItems[index]
+	
+	// Move selection with the item
+	m.selectedIndex++
+	
+	// Save both items
+	return tea.Batch(
+		func() tea.Msg {
+			if err := util.UpdateWorkItem(&item1); err != nil {
+				return alert.Alert(fmt.Sprintf("Failed to save item: %v", err), alert.AlertTypeError)()
+			}
+			return data.UpdateWorkItemMsg{WorkItem: &item1}
+		},
+		func() tea.Msg {
+			if err := util.UpdateWorkItem(&item2); err != nil {
+				return alert.Alert(fmt.Sprintf("Failed to save item: %v", err), alert.AlertTypeError)()
+			}
+			return data.UpdateWorkItemMsg{WorkItem: &item2}
+		},
+	)
 }
 
 func (m *Model) removeWorkItem(id string) {
