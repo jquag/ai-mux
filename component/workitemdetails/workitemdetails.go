@@ -2,8 +2,6 @@ package workitemdetails
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,6 +25,10 @@ func New(workItem *data.WorkItem) *Model {
 		workItem: workItem,
 		viewport: vp,
 	}
+}
+
+func (m *Model) Init() tea.Cmd {
+	return nil
 }
 
 func (m *Model) Update(msg tea.Msg) (modal.ModalContent, tea.Cmd) {
@@ -77,13 +79,7 @@ func (m *Model) buildContent() string {
 		
 		sections = append(sections, labelStyle.Render("Git Branch: ") + valueStyle.Render(safeName))
 		
-		cwd, err := os.Getwd()
-		var worktreePath string
-		if err == nil {
-			mainFolderName := filepath.Base(cwd)
-			worktreePath = filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName), safeName)
-			sections = append(sections, labelStyle.Render("Worktree Folder: ") + valueStyle.Render(worktreePath))
-		}
+		worktreePath, _ := util.GetWortreeFolder(m.workItem)
 		
 		sections = append(sections, labelStyle.Render("Claude Session ID: ") + valueStyle.Render(m.workItem.Id))
 		

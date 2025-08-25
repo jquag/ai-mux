@@ -23,6 +23,10 @@ func New() *Model {
 	}
 }
 
+func (m *Model) Init() tea.Cmd {
+	return nil
+}
+
 func (m *Model) Update(msg tea.Msg) (modal.ModalContent, tea.Cmd) {
 	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)

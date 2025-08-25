@@ -8,6 +8,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jquag/ai-mux/component/alert"
+	"github.com/jquag/ai-mux/component/commit"
+	"github.com/jquag/ai-mux/component/modal"
 	data "github.com/jquag/ai-mux/data"
 	"github.com/jquag/ai-mux/util"
 )
@@ -89,19 +91,22 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 
 			// Check if worktree is clean and tell claude to commit if needed
 			if clean, err := util.IsWorktreeClean(worktreePath); err == nil && !clean {
-				// Find Claude pane by custom variable
-				claudePaneId, err := util.FindPaneByVariable(safeName, sessionName, "role", "claude-ai")
-				if err != nil {
-					return alert.Alert("Could not find Claude pane: "+err.Error(), alert.AlertTypeError)()
-				}
-				
-				err = util.RunCommandInTmuxPane(claudePaneId, "commit the changes")
-				if err != nil {
-					return alert.Alert("Failed to commit changes: "+err.Error(), alert.AlertTypeError)()
-				}
-				workitem.IsClosing = true                      // Indicator so that when claude is done we will try the CloseSession again
+				// // Find Claude pane by custom variable
+				// claudePaneId, err := util.FindPaneByVariable(safeName, sessionName, "role", "claude-ai")
+				// if err != nil {
+				// 	return alert.Alert("Could not find Claude pane: "+err.Error(), alert.AlertTypeError)()
+				// }
+				//
+				// err = util.RunCommandInTmuxPane(claudePaneId, "commit the changes")
+				// if err != nil {
+				// 	return alert.Alert("Failed to commit changes: "+err.Error(), alert.AlertTypeError)()
+				// }
+				// workitem.IsClosing = true                      // Indicator so that when claude is done we will try the CloseSession again
+				//
+				// return nil // Need to wait for claude to finish commiting
 
-				return nil // Need to wait for claude to finish commiting
+				commitDialog := commit.New(workitem)
+				return modal.ShowModal(commitDialog, "Commit Changes")()
 			}
 
 			// Remove tmux window

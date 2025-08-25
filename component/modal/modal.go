@@ -27,6 +27,7 @@ type ModalContent interface {
 	ShouldCloseOnEscape() bool
 	WithWidth(int) ModalContent
 	WithHeight(int) ModalContent
+	Init() tea.Cmd
 }
 
 type Model struct {
@@ -300,12 +301,14 @@ func New(width, height int, content ModalContent, title string, borderColor lipg
 }
 
 func ShowModal(content ModalContent, title string) func() tea.Msg {
-	return func() tea.Msg {
+	showCmd := func() tea.Msg {
 		return ShowModalMsg{
 			Content: content,
 			Title:   title,
 		}
 	}
+
+	return tea.Batch(content.Init(), showCmd)
 }
 
 type ShowModalMsg struct {

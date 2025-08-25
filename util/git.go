@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/jquag/ai-mux/data"
 )
 
 // CreateWorktree creates a new git worktree with a new or existing branch
@@ -16,11 +18,11 @@ func CreateWorktree(branchName string) (string, error) {
 		return "", fmt.Errorf("failed to get current directory: %w", err)
 	}
 	mainFolderName := filepath.Base(cwd)
-	
+
 	// Create worktree path in parent directory under worktrees folder
 	worktreesDir := filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName))
 	worktreePath := filepath.Join(worktreesDir, branchName)
-	
+
 	// Ensure the worktrees directory exists
 	absWorktreesDir, err := filepath.Abs(worktreesDir)
 	if err != nil {
@@ -29,11 +31,11 @@ func CreateWorktree(branchName string) (string, error) {
 	if err := os.MkdirAll(absWorktreesDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create worktrees directory: %w", err)
 	}
-	
+
 	// Check if branch already exists
 	checkCmd := exec.Command("git", "show-ref", "--verify", "--quiet", fmt.Sprintf("refs/heads/%s", branchName))
 	branchExists := checkCmd.Run() == nil
-	
+
 	var cmd *exec.Cmd
 	if branchExists {
 		// Use existing branch
@@ -42,12 +44,12 @@ func CreateWorktree(branchName string) (string, error) {
 		// Create new branch
 		cmd = exec.Command("git", "worktree", "add", worktreePath, "-b", branchName)
 	}
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to create worktree: %w - %s", err, string(output))
 	}
-	
+
 	return worktreePath, nil
 }
 
@@ -68,7 +70,7 @@ func IsWorktreeClean(worktreePath string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to check worktree status: %w - %s", err, string(output))
 	}
-	
+
 	// If output is empty, the worktree is clean
 	return len(output) == 0, nil
 }
@@ -87,11 +89,22 @@ func GetColoredGitDiff(worktreePath string) (string, error) {
 		}
 		return "", fmt.Errorf("failed to get git diff: %w", err)
 	}
-	
+
 	// If there's no diff, return a message
 	if len(output) == 0 {
 		return "No changes in worktree", nil
 	}
-	
+
 	return string(output), nil
+}
+
+func GetWortreeFolder(item *data.WorkItem) (string, error) {
+	cwd, err := os.Getwd()
+	if err == nil {
+		safeName := ToSafeName(item.ShortName)
+		mainFolderName := filepath.Base(cwd)
+		return filepath.Join("..", fmt.Sprintf("%s-worktrees", mainFolderName), safeName), nil
+
+	}
+	return "", err
 }
