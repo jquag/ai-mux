@@ -1,6 +1,8 @@
 package commit
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -8,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jquag/ai-mux/component/modal"
 	"github.com/jquag/ai-mux/data"
+	"github.com/jquag/ai-mux/service"
 	"github.com/jquag/ai-mux/theme"
 	"github.com/jquag/ai-mux/util"
 )
@@ -20,6 +23,7 @@ type Model struct {
 	submitted    bool
 	item         *data.WorkItem
 	diff         string
+	submitErr    error
 }
 
 func New(item *data.WorkItem) *Model {
@@ -29,7 +33,7 @@ func New(item *data.WorkItem) *Model {
 
 	keyMap := huh.NewDefaultKeyMap()
 	keyMap.Text.NewLine = key.NewBinding(key.WithKeys("alt+enter"), key.WithHelp("alt+enter", "new line"))
-	
+
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewText().
@@ -69,16 +73,20 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (modal.ModalContent, tea.Cmd) {
-	if m.submitted {
+	switch msg := msg.(type) {
+	case DiffForCommitMsg:
+		if msg.Err == nil {
+			m.diff = msg.Diff
+		} else {
+			m.diff = msg.Err.Error()
+		}
 		return m, nil
+	case CommitSuccessMsg:
+		return m, tea.Batch(modal.CloseCmd, service.CloseSession(m.item))
 	}
 
-	if diffMsg, ok := msg.(DiffForCommitMsg); ok {
-		if diffMsg.Err == nil {
-			m.diff = diffMsg.Diff
-		} else {
-			m.diff = diffMsg.Err.Error()
-		}
+	if m.submitted {
+		return m, nil
 	}
 
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
@@ -90,10 +98,10 @@ func (m *Model) Update(msg tea.Msg) (modal.ModalContent, tea.Cmd) {
 			m.diffViewport.ScrollUp(1)
 			return m, nil
 		case "ctrl+d":
-			m.diffViewport.ScrollDown(m.diffViewport.Height-1)
+			m.diffViewport.ScrollDown(m.diffViewport.Height - 1)
 			return m, nil
 		case "ctrl+u":
-			m.diffViewport.ScrollUp(m.diffViewport.Height-1)
+			m.diffViewport.ScrollUp(m.diffViewport.Height - 1)
 			return m, nil
 		}
 	}
@@ -104,6 +112,7 @@ func (m *Model) Update(msg tea.Msg) (modal.ModalContent, tea.Cmd) {
 
 		if m.form.State == huh.StateCompleted {
 			m.submitted = true
+			return m, m.submitCmd()
 		}
 	}
 
@@ -111,6 +120,15 @@ func (m *Model) Update(msg tea.Msg) (modal.ModalContent, tea.Cmd) {
 }
 
 func (m *Model) View() string {
+	if m.submitErr != nil {
+		return lipgloss.JoinVertical(lipgloss.Left,
+			"There was a problem comitting the changes:",
+			lipgloss.NewStyle().Foreground(theme.Colors.Error).Render(m.submitErr.Error()),
+			"",
+			"Press ESC to close this dialog.",
+		)
+	}
+
 	msg := lipgloss.
 		NewStyle().
 		Foreground(theme.Colors.Text).
@@ -171,7 +189,47 @@ func (m *Model) WithHeight(height int) modal.ModalContent {
 	return m
 }
 
+func (m *Model) submitCmd() tea.Cmd {
+	return func() tea.Msg {
+		// Get the commit message from the form
+		message := m.form.GetString("message")
+		done := m.form.GetBool("done")
+
+		if !done {
+			return modal.CloseCmd() //cancel case
+		}
+
+		// Use default message if none provided
+		if message == "" {
+			message = fmt.Sprintf("changes for '%s'", m.item.ShortName)
+		}
+
+		// Get the worktree folder
+		folder, err := util.GetWortreeFolder(m.item)
+		if err != nil {
+			m.submitErr = err
+			return nil
+		}
+
+		// Add all untracked files
+		if err := util.GitAddAll(folder); err != nil {
+			m.submitErr = err
+			return nil
+		}
+
+		// Commit with the message
+		if err := util.GitCommit(folder, message); err != nil {
+			m.submitErr = err
+			return nil
+		}
+
+		return CommitSuccessMsg{}
+	}
+}
+
 type DiffForCommitMsg struct {
 	Diff string
 	Err  error
 }
+
+type CommitSuccessMsg struct{}

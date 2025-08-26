@@ -9,10 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"slices"
+
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jquag/ai-mux/component/alert"
+	"github.com/jquag/ai-mux/component/commit"
 	"github.com/jquag/ai-mux/component/help"
 	"github.com/jquag/ai-mux/component/modal"
 	"github.com/jquag/ai-mux/component/workform"
@@ -21,7 +24,6 @@ import (
 	"github.com/jquag/ai-mux/service"
 	"github.com/jquag/ai-mux/theme"
 	"github.com/jquag/ai-mux/util"
-	"slices"
 )
 
 type Model struct {
@@ -122,6 +124,9 @@ func (m *Model) Update(msg tea.Msg) (*Model, tea.Cmd) {
 			return m, tea.Batch(m.closeSelected(), calcStatus(msg.item, 3, false))
 		}
 		return m, calcStatus(msg.item, 3, false)
+	case service.ShowCommitDialogMsg:
+		commitDialog := commit.New(msg.WorkItem)
+		return m, modal.ShowModal(commitDialog, "Commit Changes")
 	}
 
 	return m, nil
@@ -343,15 +348,15 @@ func (m *Model) resumeSelected() tea.Cmd {
 	if selected == nil {
 		return alert.Alert("No work item selected.", alert.AlertTypeWarning)
 	}
-	
+
 	// Check if item has been started (has a session to resume)
 	if selected.Status == "created" || selected.Status == "" {
 		return alert.Alert("This work item has not been started yet.", alert.AlertTypeWarning)
 	}
-	
+
 	// Write Notification status to indicate waiting for user
 	util.WriteStatusLog(selected.Id, "Notification", util.AiMuxDir)
-	
+
 	return tea.Batch(calcStatus(selected, 0, true), service.ResumeSession(selected))
 }
 
@@ -403,20 +408,20 @@ func (m *Model) moveItemUp(index int) tea.Cmd {
 	if index <= 0 || index >= len(m.workItems) {
 		return nil
 	}
-	
+
 	// Swap the Order values
 	m.workItems[index].Order, m.workItems[index-1].Order = m.workItems[index-1].Order, m.workItems[index].Order
-	
+
 	// Create copies to save
 	item1 := *m.workItems[index]
 	item2 := *m.workItems[index-1]
-	
+
 	// Swap the items in the list
 	m.workItems[index], m.workItems[index-1] = m.workItems[index-1], m.workItems[index]
-	
+
 	// Move selection with the item
 	m.selectedIndex--
-	
+
 	// Save both items
 	return tea.Batch(
 		func() tea.Msg {
@@ -438,20 +443,20 @@ func (m *Model) moveItemDown(index int) tea.Cmd {
 	if index < 0 || index >= len(m.workItems)-1 {
 		return nil
 	}
-	
+
 	// Swap the Order values
 	m.workItems[index].Order, m.workItems[index+1].Order = m.workItems[index+1].Order, m.workItems[index].Order
-	
+
 	// Create copies to save
 	item1 := *m.workItems[index]
 	item2 := *m.workItems[index+1]
-	
+
 	// Swap the items in the list
 	m.workItems[index], m.workItems[index+1] = m.workItems[index+1], m.workItems[index]
-	
+
 	// Move selection with the item
 	m.selectedIndex++
-	
+
 	// Save both items
 	return tea.Batch(
 		func() tea.Msg {

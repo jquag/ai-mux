@@ -8,8 +8,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jquag/ai-mux/component/alert"
-	"github.com/jquag/ai-mux/component/commit"
-	"github.com/jquag/ai-mux/component/modal"
 	data "github.com/jquag/ai-mux/data"
 	"github.com/jquag/ai-mux/util"
 )
@@ -105,8 +103,9 @@ func CloseSession(workitem *data.WorkItem) tea.Cmd {
 				//
 				// return nil // Need to wait for claude to finish commiting
 
-				commitDialog := commit.New(workitem)
-				return modal.ShowModal(commitDialog, "Commit Changes")()
+				return ShowCommitDialogMsg{
+					WorkItem: workitem,
+				}
 			}
 
 			// Remove tmux window
@@ -230,4 +229,8 @@ func startClaudeInWindow(workitem *data.WorkItem, mode string) error {
 		util.RunCommandInTmuxPane(claudePaneId, "Enter")
 	}
 	return err
+}
+
+type ShowCommitDialogMsg struct {
+	WorkItem *data.WorkItem
 }

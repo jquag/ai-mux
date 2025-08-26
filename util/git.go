@@ -108,3 +108,23 @@ func GetWortreeFolder(item *data.WorkItem) (string, error) {
 	}
 	return "", err
 }
+
+// GitAddAll adds all files (tracked and untracked) in the worktree
+func GitAddAll(worktreePath string) error {
+	cmd := exec.Command("git", "-C", worktreePath, "add", "-A")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to add files: %w - %s", err, string(output))
+	}
+	return nil
+}
+
+// GitCommit creates a commit with the given message in the worktree
+func GitCommit(worktreePath string, message string) error {
+	cmd := exec.Command("git", "-C", worktreePath, "commit", "-m", message)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to commit: %w - %s", err, string(output))
+	}
+	return nil
+}
