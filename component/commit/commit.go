@@ -28,8 +28,8 @@ type Model struct {
 
 func New(item *data.WorkItem) *Model {
 	vp := viewport.New(0, 0)
-
 	confirmValue := true // Default to Submit
+	message := item.ShortName // Default to the short name
 
 	keyMap := huh.NewDefaultKeyMap()
 	keyMap.Text.NewLine = key.NewBinding(key.WithKeys("alt+enter"), key.WithHelp("alt+enter", "new line"))
@@ -39,6 +39,7 @@ func New(item *data.WorkItem) *Model {
 			huh.NewText().
 				Key("message").
 				Title("Commit Message").
+				Value(&message).
 				Lines(3),
 			huh.NewConfirm().
 				Key("done").
